@@ -95,8 +95,6 @@ struct ContentView: View {
     }
 }
 
-func requestAuthorization(options: UNAuthorizationOptions = []) async throws -> Bool
-
 #Preview {
     ContentView()
 }
