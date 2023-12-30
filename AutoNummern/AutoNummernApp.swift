@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import UserNotifications
 
 @main
 struct AutoNummernApp: App {
@@ -17,9 +16,5 @@ struct AutoNummernApp: App {
     }
 }
 
-func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    registerForPushNotifications()
-    return true
-}
 
 

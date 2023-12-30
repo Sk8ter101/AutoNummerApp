@@ -6,20 +6,8 @@
 //
 
 import SwiftUI
+import UserNotifications
 
-//struct CustomButtonStyle: ButtonStyle {
-//    @Binding var selectedNumber: Int?
-//    func makeBody (configuration: Configuration) -> some View {
-//        configuration.label
-//            .background(
-//                selectedNumber == Int(configuration.label.title) ? Color.green : Color.red)
-//            .font(.title)
-//            .frame(width: 60, height: 60)
-//            .background(configuration.isPressed ? Color.green : Color.red)
-//            .foregroundColor(.white)
-//            .cornerRadius (30)
-//    }
-//}
 struct RedButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -107,50 +95,8 @@ struct ContentView: View {
     }
 }
 
+func requestAuthorization(options: UNAuthorizationOptions = []) async throws -> Bool
+
 #Preview {
     ContentView()
 }
-
-
-//struct ContentView: View {
-//    @State private var selectedNumber: Int?
-//    @State private var isButtonPressed = false
-//    
-//    var body: some View {
-//        ScrollView(.horizontal) {
-//            HStack(spacing: 10) {
-//                ForEach(1..<30,id : \.self) { number in
-//                    Button( action: {
-//                        selectedNumber = number
-//                        UserDefaults.standard.set(number, forKey: "selectedNumber")
-//                        print ("Button \(number) wurde gedrückt")
-//                    }) {
-////                        GeometryReader { geo in
-//                            Text("\(number)")
-//                                .font(.largeTitle)
-//                                .padding()
-//                                .background(
-//                                    selectedNumber == number ? Color.green : Color.red)
-//                                .foregroundColor(.white)
-//                                .cornerRadius(30)
-//                                .frame(width: 80, height: 200)
-//
-////                            .background(GeometryReader { _ in
-////                            EmptyView()
-////                        })
-////                        .buttonStyle(CustomButtonStyle(selectedNumber: $selectedNumber))
-//                        .frame(width: 100, height: 200)
-//                        .simultaneousGesture(TapGesture().onEnded {
-//                            isButtonPressed.toggle()
-//                        })
-//                    }
-//                }
-//            }
-//        }
-//        .onAppear {
-//            if let number = UserDefaults.standard.value(forKey: "selectedNumber") as? Int {
-//                selectedNumber = number
-//            }
-//        }
-//    }
-//}
