@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UserNotifications
+import CloudKit
 
 struct RedButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -49,7 +50,13 @@ struct GrowingButton: ButtonStyle {
 }
 
 struct ContentView: View {
+    
+    // Get a reference to the managed object context from the environment.
+    @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(sortDescriptors: []) private var CoreNumber: FetchedResults<CoreDataAutoNummer>
+    
     @State private var selectedNumber: Int?
+    @State private var coreDataIndex: Int?
     @State private var isButtonPressed = false
     
     var body: some View {
@@ -66,7 +73,10 @@ struct ContentView: View {
                         if (selectedNumber ?? 1 >= number) {
                             Button("\(number)", action: {
                                 selectedNumber = number
-                                UserDefaults.standard.set(number, forKey: "selectedNumber")
+                                //UserDefaults.standard.set(number, forKey: "selectedNumber")
+                                let CoreNumber = CoreDataAutoNummer(context: viewContext)
+                                CoreNumber.nummer = Int16(number)
+                                try? viewContext.save()
                                 print ("Button \(number) wurde gedrückt")
                             }
                             )
@@ -74,7 +84,10 @@ struct ContentView: View {
                         } else {
                             Button("\(number)", action: {
                                 selectedNumber = number
-                                UserDefaults.standard.set(number, forKey: "selectedNumber1")
+                                //UserDefaults.standard.set(number, forKey: "selectedNumber")
+                                let CoreNumber = CoreDataAutoNummer(context: viewContext)
+                                CoreNumber.nummer = Int16(number)
+                                try? viewContext.save()
                                 print ("Button \(number) wurde gedrückt")
                             }
                             )
@@ -88,10 +101,30 @@ struct ContentView: View {
         .background(
             LinearGradient(gradient: Gradient(colors: [.white, .blue, .white]), startPoint: .top, endPoint: .bottom))
         .onAppear {
-            if let number = UserDefaults.standard.value(forKey: "selectedNumber") as? Int {
-                selectedNumber = number
+            if CoreNumber.count == 0 {
+                selectedNumber = 11
+            } else {
+                print ("AN_Debug \(Date().formatted(date: .omitted, time: .standard)): Anzahl Einträge :  \(CoreNumber.count)")
+                print ("AN_Debug \(Date().formatted(date: .omitted, time: .standard)): Es wurde  \(CoreNumber[CoreNumber.count-1].nummer) eingelesen.")
+                coreDataIndex = CoreNumber.count-1
+                selectedNumber = Int(CoreNumber[coreDataIndex ?? 0].nummer)
+                
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)
+            .receive(on: DispatchQueue.main)) { _ in
+                //fetchRemoteChanges()
+                coreDataIndex = CoreNumber.count-1
+                print ("AN_Debug \(Date().formatted(date: .omitted, time: .standard)): Notification eingetroffen. CoreDataIndex = \(coreDataIndex ?? 0). Aktuelle Nummer = \(selectedNumber ?? 0). CoreNumber = \(CoreNumber[coreDataIndex ?? 0].nummer)")
+                    //selectedNumber = Int(CoreNumber[CoreNumber.count-1].nummer)
+                viewContext.perform {
+                    do {
+                        try viewContext.save()
+                    } catch {
+                        print("AN_Debug \(Date().formatted(date: .omitted, time: .standard)): Failed to save changes: \(error.localizedDescription)")
+                    }
+                }
+            }
     }
 }
 

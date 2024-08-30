@@ -14,6 +14,11 @@
 		4FE1F11D2B35ACDE0023E42B /* AutoNummernTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE1F11C2B35ACDE0023E42B /* AutoNummernTests.swift */; };
 		4FE1F1272B35ACDE0023E42B /* AutoNummernUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE1F1262B35ACDE0023E42B /* AutoNummernUITests.swift */; };
 		4FE1F1292B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE1F1282B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift */; };
+		CCA409F72B66DF1300FF9724 /* iCloudManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA409F62B66DF1300FF9724 /* iCloudManager.swift */; };
+		CCB1A9E72B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9E52B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld */; };
+		CCB1A9EA2B6EA46A003A53D6 /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9E92B6EA46A003A53D6 /* CoreDataStack.swift */; };
+		CCB1A9F52B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9F32B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift */; };
+		CCB1A9F62B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9F42B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +49,12 @@
 		4FE1F1222B35ACDE0023E42B /* AutoNummernUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AutoNummernUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FE1F1262B35ACDE0023E42B /* AutoNummernUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoNummernUITests.swift; sourceTree = "<group>"; };
 		4FE1F1282B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoNummernUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		CCA409F62B66DF1300FF9724 /* iCloudManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iCloudManager.swift; sourceTree = "<group>"; };
+		CCB1A9E62B6EA0A6003A53D6 /* AutoNrModel.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = AutoNrModel.xcdatamodel; sourceTree = "<group>"; };
+		CCB1A9E92B6EA46A003A53D6 /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
+		CCB1A9F32B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoreDataAutoNummer+CoreDataClass.swift"; sourceTree = "<group>"; };
+		CCB1A9F42B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoreDataAutoNummer+CoreDataProperties.swift"; sourceTree = "<group>"; };
+		CCB1A9F72B77BDCA003A53D6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CCD059D42B407B3D00939C76 /* AutoNummern.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AutoNummern.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -95,6 +106,9 @@
 		4FE1F10A2B35ACDC0023E42B /* AutoNummern */ = {
 			isa = PBXGroup;
 			children = (
+				CCB1A9F72B77BDCA003A53D6 /* Info.plist */,
+				CCB1A9E82B6EA435003A53D6 /* Model */,
+				CCA409F52B66DAFE00FF9724 /* View Model */,
 				CCD059D42B407B3D00939C76 /* AutoNummern.entitlements */,
 				4FE1F10B2B35ACDC0023E42B /* AutoNummernApp.swift */,
 				4FE1F10D2B35ACDC0023E42B /* ContentView.swift */,
@@ -127,6 +141,25 @@
 				4FE1F1282B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift */,
 			);
 			path = AutoNummernUITests;
+			sourceTree = "<group>";
+		};
+		CCA409F52B66DAFE00FF9724 /* View Model */ = {
+			isa = PBXGroup;
+			children = (
+				CCA409F62B66DF1300FF9724 /* iCloudManager.swift */,
+			);
+			path = "View Model";
+			sourceTree = "<group>";
+		};
+		CCB1A9E82B6EA435003A53D6 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				CCB1A9E52B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld */,
+				CCB1A9F32B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift */,
+				CCB1A9F42B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift */,
+				CCB1A9E92B6EA46A003A53D6 /* CoreDataStack.swift */,
+			);
+			path = Model;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -259,8 +292,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CCB1A9EA2B6EA46A003A53D6 /* CoreDataStack.swift in Sources */,
 				4FE1F10E2B35ACDC0023E42B /* ContentView.swift in Sources */,
+				CCA409F72B66DF1300FF9724 /* iCloudManager.swift in Sources */,
+				CCB1A9F62B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift in Sources */,
+				CCB1A9E72B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld in Sources */,
 				4FE1F10C2B35ACDC0023E42B /* AutoNummernApp.swift in Sources */,
+				CCB1A9F52B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -428,6 +466,7 @@
 				DEVELOPMENT_TEAM = 3N6YCEVS77;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AutoNummern/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -461,6 +500,7 @@
 				DEVELOPMENT_TEAM = 3N6YCEVS77;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AutoNummern/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -594,6 +634,19 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		CCB1A9E52B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				CCB1A9E62B6EA0A6003A53D6 /* AutoNrModel.xcdatamodel */,
+			);
+			currentVersion = CCB1A9E62B6EA0A6003A53D6 /* AutoNrModel.xcdatamodel */;
+			path = AutoNrModel.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = 4FE1F1002B35ACDC0023E42B /* Project object */;
 }
