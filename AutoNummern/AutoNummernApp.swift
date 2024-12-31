@@ -11,8 +11,10 @@ import SwiftUI
 struct AutoNummernApp: App {
     
     // Create an observable instance of the Core Data stack.
-    @StateObject private var coreDataStack = CoreDataStack.shared
+    // @StateObject private var coreDataStack = CoreDataStack.shared
 
+    // Delegate to accept share requests - muss genutzt werden damit die aktuelle Autonummer unter allen Teilnehmern aus getauscht werden kann.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     var body: some Scene {
         WindowGroup {
@@ -20,7 +22,7 @@ struct AutoNummernApp: App {
             // Inject the persistent container's managed object context
             // into the environment.
                 .environment(\.managedObjectContext,
-                              coreDataStack.persistentContainer.viewContext)
+                              CoreDataStack.shared.context)
         }
     }
 }
