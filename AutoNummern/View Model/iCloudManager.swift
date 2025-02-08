@@ -25,9 +25,9 @@ class iCloudManager: ObservableObject {
         // saving the record into the database
         self.database.save(record) { newRecord, error in
             if let error = error {
-                print(error.localizedDescription)
+                DebugLogger.log("\(error.localizedDescription)")
             } else {
-                print ("Record wurde gespeichert")// Record saved successfully.
+                DebugLogger.log("Record wurde gespeichert")// Record saved successfully.
             }
         }
     }

@@ -83,7 +83,7 @@ struct ContentView: View {
                                     let CoreNumber = CoreDataAutoNummer(context: managedObjectContext)
                                     CoreNumber.nummer = Int16(number)
                                     try? managedObjectContext.save()
-                                    print ("Button \(number) wurde gedrückt")
+                                    DebugLogger.log("Button \(number) wurde gedrückt")
                                   }
                                 )
                                 .buttonStyle(GreenButton())
@@ -93,8 +93,8 @@ struct ContentView: View {
                                     let CoreNumber = CoreDataAutoNummer(context: managedObjectContext)
                                     CoreNumber.nummer = Int16(number)
                                     try? managedObjectContext.save()
-                                    print ("Button \(number) wurde gedrückt")
-                                    print(FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask))
+                                    DebugLogger.log("Button \(number) wurde gedrückt")
+                                    DebugLogger.log("FileManager URLs: \(FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask))")
                                   }
                                 )
                                 .buttonStyle(RedButton())
@@ -109,14 +109,22 @@ struct ContentView: View {
             }
             Spacer()
             Button {
-                if !stack.isShared(object: FetchedCoreNumber.first!) {
-                    Task {
-                        await createShare(FetchedCoreNumber.first!)
+                Task {
+                    do {
+                        // Timeout nach 30 Sekunden
+                        try await withTimeout(seconds: 30) {
+                            if !stack.isShared(object: FetchedCoreNumber.first!) {
+                                await createShare(FetchedCoreNumber.first!)
+                            }
+                            showShareSheet = true
+                            return () // Expliziter Return für Void
+                        }
+                    } catch {
+                        DebugLogger.log("Sharing timeout or error: \(error)")
                     }
-              }
-              showShareSheet = true
+                }
             } label: {
-              Image(systemName: "square.and.arrow.up")
+                Image(systemName: "square.and.arrow.up")
             }
         }
         .sheet(isPresented: $showShareSheet, content: {
@@ -131,11 +139,15 @@ struct ContentView: View {
         .background(
             LinearGradient(gradient: Gradient(colors: [.white, .blue, .white]), startPoint: .top, endPoint: .bottom))
         .onAppear {
+            logShareStatus()
             if FetchedCoreNumber.count == 0 {
                 selectedNumber = 1
+                DebugLogger.log("Keine Einträge gefunden, setze selectedNumber = 1")
             } else {
-                print ("AN_Debug \(Date().formatted(date: .omitted, time: .standard)): Anzahl Einträge :  \(FetchedCoreNumber.count)")
-                print ("AN_Debug \(Date().formatted(date: .omitted, time: .standard)): Es wurde  \(FetchedCoreNumber[FetchedCoreNumber.count-1].nummer) eingelesen.")
+                DebugLogger.logCoreDataStatus(
+                    count: FetchedCoreNumber.count,
+                    lastNumber: Int(FetchedCoreNumber[FetchedCoreNumber.count-1].nummer)
+                )
                 coreDataIndex = FetchedCoreNumber.count-1
                 selectedNumber = Int(FetchedCoreNumber[coreDataIndex!].nummer)
                 // Hier wird ausgegeben wer momentan die CoreData "shared"
@@ -146,13 +158,13 @@ struct ContentView: View {
             .receive(on: DispatchQueue.main)) { _ in
                 //fetchRemoteChanges()
                 coreDataIndex = FetchedCoreNumber.count-1
-                print ("AN_Debug \(Date().formatted(date: .omitted, time: .standard)): Notification eingetroffen. CoreDataIndex = \(coreDataIndex ?? 0). Aktuelle Nummer = \(selectedNumber ?? 0). FetchedCoreNumber = \(FetchedCoreNumber[coreDataIndex ?? 0].nummer)")
+                DebugLogger.log("\(Date().formatted(date: .omitted, time: .standard)): Notification eingetroffen. CoreDataIndex = \(coreDataIndex ?? 0). Aktuelle Nummer = \(selectedNumber ?? 0). FetchedCoreNumber = \(FetchedCoreNumber[coreDataIndex ?? 0].nummer)")
                     //selectedNumber = Int(CoreNumber[CoreNumber.count-1].nummer)
                 managedObjectContext.perform {
                     do {
                         try managedObjectContext.save()
                     } catch {
-                        print("AN_Debug \(Date().formatted(date: .omitted, time: .standard)): Failed to save changes: \(error.localizedDescription)")
+                        DebugLogger.log("\(Date().formatted(date: .omitted, time: .standard)): Failed to save changes: \(error.localizedDescription)")
                     }
                 }
             }
@@ -171,7 +183,7 @@ extension ContentView {
     case .readWrite:
       return "Read-Write"
     @unknown default:
-      fatalError("A new value added to CKShare.Participant.Permission")
+      fatalError("MyDebug: A new value added to CKShare.Participant.Permission")
     }
   }
 
@@ -186,7 +198,7 @@ extension ContentView {
     case .unknown:
       return "Unknown"
     @unknown default:
-      fatalError("A new value added to CKShare.Participant.Role")
+      fatalError("MyDebug: A new value added to CKShare.Participant.Role")
     }
   }
 
@@ -201,21 +213,56 @@ extension ContentView {
     case .unknown:
       return "Unknown"
     @unknown default:
-      fatalError("A new value added to CKShare.Participant.AcceptanceStatus")
+      fatalError("MyDebug: A new value added to CKShare.Participant.AcceptanceStatus")
     }
   }
   
   private func createShare(_ autonummer: CoreDataAutoNummer) async {
     do {
-      let (_, share, _) =
-      try await stack.persistentContainer.share([autonummer], to: nil)
-      share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
-      self.share = share
+        // Prüfen Sie zuerst, ob bereits ein Share existiert
+        if let existingShare = stack.getShare(autonummer) {
+            // Verwenden Sie den existierenden Share
+            self.share = existingShare
+            DebugLogger.log("Existierender Share gefunden")
+        } else {
+            // Erstellen Sie einen neuen Share
+            let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
+            share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
+            self.share = share
+            DebugLogger.log("Neuer Share erstellt")
+        }
     } catch {
-      print("Failed to create share")
+        DebugLogger.log("Fehler beim Share-Vorgang: \(error)")
+    }
+  }
+
+  private func logShareStatus() {
+    guard let firstRecord = FetchedCoreNumber.first else { 
+        DebugLogger.log("Kein FirstRecord gefunden")
+        return 
     }
   }
 }
+
+// Hilfsfunktion für Timeout
+func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
+    try await withThrowingTaskGroup(of: T.self) { group in
+        group.addTask {
+            try await operation()
+        }
+        
+        group.addTask {
+            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            throw TimeoutError()
+        }
+        
+        let result = try await group.next()!
+        group.cancelAll()
+        return result
+    }
+}
+
+struct TimeoutError: Error {}
 
 //#Preview {
 //    ContentView()

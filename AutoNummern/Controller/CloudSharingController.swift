@@ -43,11 +43,16 @@ struct CloudSharingView: UIViewControllerRepresentable {
   }
 
   func makeUIViewController(context: Context) -> UICloudSharingController {
-//    share[CKShare.SystemFieldKey.title] = autonummer.nummer
     share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
     let controller = UICloudSharingController(share: share, container: container)
     controller.modalPresentationStyle = .formSheet
     controller.delegate = context.coordinator
+    
+    // Debug-Ausgaben
+      DebugLogger.log("Share Controller created")
+      DebugLogger.log("Share participants: \(share.participants.count)")
+      DebugLogger.log("Container ID: \(container.containerIdentifier ?? "No ID")")
+    
     return controller
   }
 
@@ -67,11 +72,11 @@ final class CloudSharingCoordinator: NSObject, UICloudSharingControllerDelegate 
   }
 
   func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: Error) {
-    print("Failed to save share: \(error)")
+      DebugLogger.log("Failed to save share: \(error)")
   }
 
   func cloudSharingControllerDidSaveShare(_ csc: UICloudSharingController) {
-    print("Saved the share")
+      DebugLogger.log("Saved the share")
   }
 
   func cloudSharingControllerDidStopSharing(_ csc: UICloudSharingController) {

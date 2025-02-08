@@ -101,7 +101,7 @@ extension CoreDataStack {
       do {
         try context.save()
       } catch {
-        print("ViewContext save error: \(error)")
+          DebugLogger.log("ViewContext save error: \(error)")
       }
     }
   }
@@ -131,7 +131,7 @@ extension CoreDataStack {
   func isOwner(object: NSManagedObject) -> Bool {
     guard isShared(object: object) else { return false }
     guard let share = try? persistentContainer.fetchShares(matching: [object.objectID])[object.objectID] else {
-      print("Get ckshare error")
+        DebugLogger.log("Get ckshare error")
       return false
     }
     if let currentUser = share.currentUserParticipant, currentUser == share.owner {
@@ -144,7 +144,7 @@ extension CoreDataStack {
     guard isShared(object: autonummer) else { return nil }
     guard let shareDictionary = try? persistentContainer.fetchShares(matching: [autonummer.objectID]),
       let share = shareDictionary[autonummer.objectID] else {
-      print("Unable to get CKShare")
+        DebugLogger.log("Unable to get CKShare")
       return nil
     }
     share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
@@ -164,7 +164,7 @@ extension CoreDataStack {
             isShared = true
           }
         } catch {
-          print("Failed to fetch share for \(objectID): \(error)")
+            DebugLogger.log("Failed to fetch share for \(objectID): \(error)")
         }
       }
     }
