@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+/* Dies ist ein Testkommentar der gleich über Git committed wird */
+
 @main
 struct AutoNummernApp: App {
     
