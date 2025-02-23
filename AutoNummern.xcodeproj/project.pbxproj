@@ -16,7 +16,7 @@
 		4FE1F1292B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE1F1282B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift */; };
 		CC3A3C412CB2F62E00C2501C /* CloudSharingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3A3C3F2CB2F62E00C2501C /* CloudSharingController.swift */; };
 		CC3A3C432CBC0B1800C2501C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3A3C422CBC0B1800C2501C /* AppDelegate.swift */; };
-		CC9188D62D3D8D9C004A1BFB /* DebugLogger 3.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC9188D52D3D8D9C004A1BFB /* DebugLogger 3.swift */; };
+		CC9188D62D3D8D9C004A1BFB /* DebugLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC9188D52D3D8D9C004A1BFB /* DebugLogger.swift */; };
 		CCA409F72B66DF1300FF9724 /* iCloudManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA409F62B66DF1300FF9724 /* iCloudManager.swift */; };
 		CCB1A9E72B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9E52B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld */; };
 		CCB1A9EA2B6EA46A003A53D6 /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9E92B6EA46A003A53D6 /* CoreDataStack.swift */; };
@@ -54,7 +54,7 @@
 		4FE1F1282B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoNummernUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		CC3A3C3F2CB2F62E00C2501C /* CloudSharingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSharingController.swift; sourceTree = "<group>"; };
 		CC3A3C422CBC0B1800C2501C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		CC9188D52D3D8D9C004A1BFB /* DebugLogger 3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DebugLogger 3.swift"; sourceTree = "<group>"; };
+		CC9188D52D3D8D9C004A1BFB /* DebugLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogger.swift; sourceTree = "<group>"; };
 		CCA409F62B66DF1300FF9724 /* iCloudManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iCloudManager.swift; sourceTree = "<group>"; };
 		CCB1A9E62B6EA0A6003A53D6 /* AutoNrModel.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = AutoNrModel.xcdatamodel; sourceTree = "<group>"; };
 		CCB1A9E92B6EA46A003A53D6 /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
@@ -117,7 +117,7 @@
 				CCB1A9E82B6EA435003A53D6 /* Model */,
 				CCA409F52B66DAFE00FF9724 /* View Model */,
 				CCD059D42B407B3D00939C76 /* AutoNummern.entitlements */,
-				CC9188D52D3D8D9C004A1BFB /* DebugLogger 3.swift */,
+				CC9188D52D3D8D9C004A1BFB /* DebugLogger.swift */,
 				4FE1F10B2B35ACDC0023E42B /* AutoNummernApp.swift */,
 				CC3A3C422CBC0B1800C2501C /* AppDelegate.swift */,
 				4FE1F10D2B35ACDC0023E42B /* ContentView.swift */,
@@ -312,7 +312,7 @@
 				CCB1A9EA2B6EA46A003A53D6 /* CoreDataStack.swift in Sources */,
 				4FE1F10E2B35ACDC0023E42B /* ContentView.swift in Sources */,
 				CCA409F72B66DF1300FF9724 /* iCloudManager.swift in Sources */,
-				CC9188D62D3D8D9C004A1BFB /* DebugLogger 3.swift in Sources */,
+				CC9188D62D3D8D9C004A1BFB /* DebugLogger.swift in Sources */,
 				CC3A3C432CBC0B1800C2501C /* AppDelegate.swift in Sources */,
 				CCB1A9F62B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift in Sources */,
 				CCB1A9E72B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld in Sources */,

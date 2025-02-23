@@ -17,7 +17,7 @@ struct RedButton: ButtonStyle {
             .background(.red)
             .foregroundStyle(.white)
             .clipShape(Capsule())
-            .font(.largeTitle)
+            .font(.title)
             .scaleEffect(configuration.isPressed ? 1.5 : 1)
             .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
     }
@@ -31,9 +31,9 @@ struct GreenButton: ButtonStyle {
             .background(.green)
             .foregroundStyle(.white)
             .clipShape(Capsule())
-            .font(.largeTitle)
+            .font(.title)
             .scaleEffect(configuration.isPressed ? 1.5 : 1)
-//            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
     }
 }
 
@@ -219,17 +219,25 @@ extension ContentView {
   
   private func createShare(_ autonummer: CoreDataAutoNummer) async {
     do {
-        // Prüfen Sie zuerst, ob bereits ein Share existiert
         if let existingShare = stack.getShare(autonummer) {
-            // Verwenden Sie den existierenden Share
             self.share = existingShare
             DebugLogger.log("Existierender Share gefunden")
         } else {
-            // Erstellen Sie einen neuen Share
+            // Erstellen und speichern des Shares
             let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
             share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
+            
+            // Den CloudKit-Store finden
+            guard let cloudStore = stack.persistentContainer.persistentStoreCoordinator.persistentStores.first else {
+                DebugLogger.log("Kein CloudKit Store gefunden")
+                return
+            }
+            
+            // Speichern des Shares auf dem Server
+            try await stack.persistentContainer.persistUpdatedShare(share, in: cloudStore)
+            
             self.share = share
-            DebugLogger.log("Neuer Share erstellt")
+            DebugLogger.log("Neuer Share erstellt und gespeichert")
         }
     } catch {
         DebugLogger.log("Fehler beim Share-Vorgang: \(error)")

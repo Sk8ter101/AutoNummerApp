@@ -2,33 +2,55 @@ import Foundation
 import CloudKit
 
 struct DebugLogger {
-    static let prefix = "MyDebug"
-    
-    static func log(_ message: String, function: String = #function, file: String = #file, line: Int = #line) {
-        #if DEBUG
+    private static func printDebug(
+        _ message: String,
+        file: String,
+        function: String,
+        line: Int
+    ) {
         let filename = (file as NSString).lastPathComponent
-        print("\(prefix): [\(filename):\(line) - \(function)] \(message)")
-        #endif
+        print("MyDebug: [\(filename):\(line) - \(function)] \(message)")
     }
     
-    // Spezifische Logging-Funktionen für verschiedene Bereiche
-    static func logShareStatus(isShared: Bool, share: CKShare?) {
-        log("Share-Status:")
-        log("IsShared: \(isShared)")
+    static func log(
+        _ message: String,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        printDebug(message, file: file, function: function, line: line)
+    }
+
+    static func logCoreDataStatus(
+        count: Int,
+        lastNumber: Int,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        printDebug("CoreData Status:", file: file, function: function, line: line)
+        printDebug("Anzahl Einträge: \(count)", file: file, function: function, line: line)
+        printDebug("Letzte Nummer: \(lastNumber)", file: file, function: function, line: line)
+    }
+
+    static func logShareStatus(
+        isShared: Bool,
+        share: CKShare?,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
+        printDebug("Share Status:", file: file, function: function, line: line)
+        printDebug("Is Shared: \(isShared)", file: file, function: function, line: line)
+        
         if let share = share {
-            log("Aktueller Share: \(share)")
-            log("Teilnehmer: \(share.participants.count)")
-            log("Share-Typ: \(share[CKShare.SystemFieldKey.shareType] ?? "Nicht definiert")")
+            printDebug("Share Owner: \(share.owner.userIdentity.nameComponents?.formatted() ?? "Unknown")", 
+                      file: file, function: function, line: line)
+            printDebug("Participants: \(share.participants.count)", 
+                      file: file, function: function, line: line)
         } else {
-            log("Kein aktiver Share gefunden")
-        }
-    }
-    
-    static func logCoreDataStatus(count: Int, lastNumber: Int?) {
-        log("CoreData Status:")
-        log("Anzahl Einträge: \(count)")
-        if let number = lastNumber {
-            log("Letzte Nummer: \(number)")
+            printDebug("No share object available", 
+                      file: file, function: function, line: line)
         }
     }
 } 
