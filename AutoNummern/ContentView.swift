@@ -8,6 +8,7 @@
 import SwiftUI
 import UserNotifications
 import CloudKit
+import CoreData
 
 struct RedButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -80,20 +81,14 @@ struct ContentView: View {
                             if (selectedNumber ?? 1 >= number) {
                                 Button("\(number)", action: {
                                     selectedNumber = number
-                                    let CoreNumber = CoreDataAutoNummer(context: managedObjectContext)
-                                    CoreNumber.nummer = Int16(number)
-                                    try? managedObjectContext.save()
-                                    DebugLogger.log("Button \(number) wurde gedrückt")
+                                    saveNumber(Int16(number))
                                   }
                                 )
                                 .buttonStyle(GreenButton())
                             } else {
                                 Button("\(number)", action: {
                                     selectedNumber = number
-                                    let CoreNumber = CoreDataAutoNummer(context: managedObjectContext)
-                                    CoreNumber.nummer = Int16(number)
-                                    try? managedObjectContext.save()
-                                    DebugLogger.log("Button \(number) wurde gedrückt")
+                                    saveNumber(Int16(number))
                                     DebugLogger.log("FileManager URLs: \(FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask))")
                                   }
                                 )
@@ -139,6 +134,7 @@ struct ContentView: View {
         .background(
             LinearGradient(gradient: Gradient(colors: [.white, .blue, .white]), startPoint: .top, endPoint: .bottom))
         .onAppear {
+            cleanupCoreData()
             logShareStatus()
             if FetchedCoreNumber.count == 0 {
                 selectedNumber = 1
@@ -150,7 +146,6 @@ struct ContentView: View {
                 )
                 coreDataIndex = FetchedCoreNumber.count-1
                 selectedNumber = Int(FetchedCoreNumber[coreDataIndex!].nummer)
-                // Hier wird ausgegeben wer momentan die CoreData "shared"
                 self.share = stack.getShare(FetchedCoreNumber.first!)
             }
         }
@@ -168,6 +163,21 @@ struct ContentView: View {
                     }
                 }
             }
+    }
+
+    private func saveNumber(_ number: Int16) {
+        cleanupCoreData() // Erst alles löschen
+        
+        let context = managedObjectContext
+        let newNumber = CoreDataAutoNummer(context: context)
+        newNumber.nummer = number
+        
+        do {
+            try context.save()
+            DebugLogger.log("Neue Nummer gespeichert: \(number)")
+        } catch {
+            DebugLogger.log("Fehler beim Speichern: \(error)")
+        }
     }
 }
 // MARK: Returns CKShare participant permission
@@ -221,7 +231,8 @@ extension ContentView {
     do {
         if let existingShare = stack.getShare(autonummer) {
             self.share = existingShare
-            DebugLogger.log("Existierender Share gefunden")
+            DebugLogger.log("Existierender Share gefunden mit Teilnehmern: \(existingShare.participants.count)")
+            DebugLogger.log("Share URL: \(existingShare.url?.absoluteString ?? "keine URL")")
         } else {
             // Erstellen und speichern des Shares
             let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
@@ -238,16 +249,56 @@ extension ContentView {
             
             self.share = share
             DebugLogger.log("Neuer Share erstellt und gespeichert")
+            DebugLogger.log("Neue Share URL: \(share.url?.absoluteString ?? "keine URL")")
+            DebugLogger.log("Share Besitzer: \(share.owner.userIdentity.nameComponents?.formatted() ?? "unbekannt")")
         }
     } catch {
-        DebugLogger.log("Fehler beim Share-Vorgang: \(error)")
+        DebugLogger.log("Fehler beim Share-Vorgang: \(error.localizedDescription)")
+        if let ckError = error as? CKError {
+            DebugLogger.log("CloudKit Fehler Code: \(ckError.errorCode)")
+        }
     }
   }
 
   private func logShareStatus() {
-    guard let firstRecord = FetchedCoreNumber.first else { 
+      guard FetchedCoreNumber.first != nil else { 
         DebugLogger.log("Kein FirstRecord gefunden")
         return 
+    }
+  }
+
+  private func cleanupCoreData() {
+    let context = managedObjectContext
+    let fetchRequest: NSFetchRequest<CoreDataAutoNummer> = CoreDataAutoNummer.fetchRequest()
+    
+    do {
+        let numbers = try context.fetch(fetchRequest)
+        
+        // Speichere die letzte Nummer temporär
+        let lastNumber = numbers.last?.nummer
+        DebugLogger.log("Start Löschvorgang - Letzte Nummer war: \(lastNumber ?? -1)")
+        
+        // Alle vorhandenen Einträge löschen
+        for number in numbers {
+            context.delete(number)
+        }
+        
+        try context.save()
+        
+        // Wenn eine letzte Nummer existierte, speichere sie neu
+        if let lastNumber = lastNumber {
+            let newNumber = CoreDataAutoNummer(context: context)
+            newNumber.nummer = lastNumber
+            try context.save()
+            DebugLogger.log("Letzte Nummer wiederhergestellt: \(lastNumber)")
+        }
+        
+        // Überprüfung
+        let remainingNumbers = try context.fetch(fetchRequest)
+        DebugLogger.log("Nach Bereinigung - Anzahl Einträge: \(remainingNumbers.count)")
+        DebugLogger.log("Aktuelle Nummer: \(remainingNumbers.first?.nummer ?? -1)")
+    } catch {
+        DebugLogger.log("Fehler beim Löschen: \(error)")
     }
   }
 }
