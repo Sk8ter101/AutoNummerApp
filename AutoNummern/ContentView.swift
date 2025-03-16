@@ -153,13 +153,13 @@ struct ContentView: View {
             .receive(on: DispatchQueue.main)) { _ in
                 //fetchRemoteChanges()
                 coreDataIndex = FetchedCoreNumber.count-1
-                DebugLogger.log("\(Date().formatted(date: .omitted, time: .standard)): Notification eingetroffen. CoreDataIndex = \(coreDataIndex ?? 0). Aktuelle Nummer = \(selectedNumber ?? 0). FetchedCoreNumber = \(FetchedCoreNumber[coreDataIndex ?? 0].nummer)")
+                DebugLogger.log("\(Date().formatted(date: .omitted, time: .standard)): Notification eingetroffen. CoreDataIndex = \(coreDataIndex ?? 0). Aktuelle Nummer = \(selectedNumber ?? 0). FetchedCoreNumber = \(FetchedCoreNumber[coreDataIndex ?? 0].nummer)", level: .info)
                     //selectedNumber = Int(CoreNumber[CoreNumber.count-1].nummer)
                 managedObjectContext.perform {
                     do {
                         try managedObjectContext.save()
                     } catch {
-                        DebugLogger.log("\(Date().formatted(date: .omitted, time: .standard)): Failed to save changes: \(error.localizedDescription)")
+                        DebugLogger.log("\(Date().formatted(date: .omitted, time: .standard)): Failed to save changes: \(error.localizedDescription)", level: .error)
                     }
                 }
             }
@@ -174,9 +174,9 @@ struct ContentView: View {
         
         do {
             try context.save()
-            DebugLogger.log("Neue Nummer gespeichert: \(number)")
+            DebugLogger.log("Neue Nummer gespeichert: \(number)", level: .info)
         } catch {
-            DebugLogger.log("Fehler beim Speichern: \(error)")
+            DebugLogger.log("Fehler beim Speichern: \(error)", level: .error)
         }
     }
 }
@@ -234,35 +234,56 @@ extension ContentView {
             DebugLogger.log("Existierender Share gefunden mit Teilnehmern: \(existingShare.participants.count)")
             DebugLogger.log("Share URL: \(existingShare.url?.absoluteString ?? "keine URL")")
         } else {
-            // Erstellen und speichern des Shares
-            let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
-            share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
+            // Retry-Logik für Share-Erstellung
+            var retryCount = 0
+            var success = false
             
-            // Den CloudKit-Store finden
-            guard let cloudStore = stack.persistentContainer.persistentStoreCoordinator.persistentStores.first else {
-                DebugLogger.log("Kein CloudKit Store gefunden")
-                return
+            while !success && retryCount < 3 {
+                do {
+                    // Erstellen und speichern des Shares
+                    let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
+                    share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
+                    
+                    // Speichern des Shares auf dem Server
+                    try await stack.persistentContainer.persistUpdatedShare(share, in: stack.sharedPersistentStore)
+                    
+                    // Überprüfen ob der Share erfolgreich erstellt wurde
+                    if let persistedShare = stack.getShare(autonummer) {
+                        self.share = persistedShare
+                        success = true
+                        DebugLogger.log("Neuer Share erfolgreich erstellt und gespeichert", level: .info)
+                        DebugLogger.log("Neue Share URL: \(persistedShare.url?.absoluteString ?? "keine URL")", level: .debug)
+                        DebugLogger.log("Share Besitzer: \(persistedShare.owner.userIdentity.nameComponents?.formatted() ?? "unbekannt")", level: .debug)
+                    } else {
+                        throw NSError(domain: "ShareError", code: -2, userInfo: [NSLocalizedDescriptionKey: "Share wurde nicht persistiert"])
+                    }
+                } catch {
+                    retryCount += 1
+                    DebugLogger.log("Fehler beim Share-Vorgang (Versuch \(retryCount)/3): \(error.localizedDescription)", level: .error)
+                    if let ckError = error as? CKError {
+                        DebugLogger.log("CloudKit Fehler Code: \(ckError.errorCode)", level: .error)
+                    }
+                    if retryCount < 3 {
+                        try await Task.sleep(nanoseconds: UInt64(1_000_000_000 * retryCount)) // Exponentielles Backoff
+                    }
+                }
             }
             
-            // Speichern des Shares auf dem Server
-            try await stack.persistentContainer.persistUpdatedShare(share, in: cloudStore)
-            
-            self.share = share
-            DebugLogger.log("Neuer Share erstellt und gespeichert")
-            DebugLogger.log("Neue Share URL: \(share.url?.absoluteString ?? "keine URL")")
-            DebugLogger.log("Share Besitzer: \(share.owner.userIdentity.nameComponents?.formatted() ?? "unbekannt")")
+            if !success {
+                DebugLogger.log("Share konnte nach 3 Versuchen nicht erstellt werden", level: .error)
+            }
         }
     } catch {
-        DebugLogger.log("Fehler beim Share-Vorgang: \(error.localizedDescription)")
+        DebugLogger.log("Unerwarteter Fehler beim Share-Vorgang: \(error.localizedDescription)", level: .error)
         if let ckError = error as? CKError {
-            DebugLogger.log("CloudKit Fehler Code: \(ckError.errorCode)")
+            DebugLogger.log("CloudKit Fehler Code: \(ckError.errorCode)", level: .error)
         }
     }
   }
 
   private func logShareStatus() {
       guard FetchedCoreNumber.first != nil else { 
-        DebugLogger.log("Kein FirstRecord gefunden")
+        DebugLogger.log("Kein FirstRecord gefunden", level: .warning)
         return 
     }
   }
@@ -276,7 +297,7 @@ extension ContentView {
         
         // Speichere die letzte Nummer temporär
         let lastNumber = numbers.last?.nummer
-        DebugLogger.log("Start Löschvorgang - Letzte Nummer war: \(lastNumber ?? -1)")
+        DebugLogger.log("Start Löschvorgang - Letzte Nummer war: \(lastNumber ?? -1)", level: .info)
         
         // Alle vorhandenen Einträge löschen
         for number in numbers {
@@ -290,15 +311,15 @@ extension ContentView {
             let newNumber = CoreDataAutoNummer(context: context)
             newNumber.nummer = lastNumber
             try context.save()
-            DebugLogger.log("Letzte Nummer wiederhergestellt: \(lastNumber)")
+            DebugLogger.log("Letzte Nummer wiederhergestellt: \(lastNumber)", level: .info)
         }
         
         // Überprüfung
         let remainingNumbers = try context.fetch(fetchRequest)
-        DebugLogger.log("Nach Bereinigung - Anzahl Einträge: \(remainingNumbers.count)")
-        DebugLogger.log("Aktuelle Nummer: \(remainingNumbers.first?.nummer ?? -1)")
+        DebugLogger.log("Nach Bereinigung - Anzahl Einträge: \(remainingNumbers.count)", level: .info)
+        DebugLogger.log("Aktuelle Nummer: \(remainingNumbers.first?.nummer ?? -1)", level: .info)
     } catch {
-        DebugLogger.log("Fehler beim Löschen: \(error)")
+        DebugLogger.log("Fehler beim Löschen: \(error)", level: .error)
     }
   }
 }

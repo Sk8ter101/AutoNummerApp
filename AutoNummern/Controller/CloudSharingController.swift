@@ -49,9 +49,9 @@ struct CloudSharingView: UIViewControllerRepresentable {
     controller.delegate = context.coordinator
     
     // Debug-Ausgaben
-      DebugLogger.log("Share Controller created")
-      DebugLogger.log("Share participants: \(share.participants.count)")
-      DebugLogger.log("Container ID: \(container.containerIdentifier ?? "No ID")")
+    DebugLogger.log("Share Controller created", level: .debug)
+    DebugLogger.log("Share participants: \(share.participants.count)", level: .debug)
+    DebugLogger.log("Container ID: \(container.containerIdentifier ?? "No ID")", level: .debug)
     
     return controller
   }
@@ -72,11 +72,11 @@ final class CloudSharingCoordinator: NSObject, UICloudSharingControllerDelegate 
   }
 
   func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: Error) {
-      DebugLogger.log("Failed to save share: \(error)")
+      DebugLogger.log("Failed to save share: \(error)", level: .error)
   }
 
   func cloudSharingControllerDidSaveShare(_ csc: UICloudSharingController) {
-      DebugLogger.log("Saved the share")
+      DebugLogger.log("Saved the share", level: .info)
   }
 
   func cloudSharingControllerDidStopSharing(_ csc: UICloudSharingController) {

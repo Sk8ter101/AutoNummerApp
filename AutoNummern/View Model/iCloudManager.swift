@@ -16,6 +16,17 @@ class iCloudManager: ObservableObject {
     init() {
         self.container = CKContainer(identifier: "iCloud.com.olaf.hennig.Autonummern")
         self.database = self.container.publicCloudDatabase
+        configureLogging()
+    }
+    
+    private func configureLogging() {
+        // Standard: Weniger Meldungen (nur Fehler und Warnungen)
+        DebugLogger.currentLogLevel = .warning
+        
+        #if DEBUG
+        // Im Debug-Modus: Alle Meldungen anzeigen
+        DebugLogger.currentLogLevel = .debug
+        #endif
     }
     
     func saveNumber(number: Int) {
@@ -25,9 +36,9 @@ class iCloudManager: ObservableObject {
         // saving the record into the database
         self.database.save(record) { newRecord, error in
             if let error = error {
-                DebugLogger.log("\(error.localizedDescription)")
+                DebugLogger.log("\(error.localizedDescription)", level: .error)
             } else {
-                DebugLogger.log("Record wurde gespeichert")// Record saved successfully.
+                DebugLogger.log("Record wurde gespeichert", level: .info)
             }
         }
     }

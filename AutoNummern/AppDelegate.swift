@@ -52,7 +52,7 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
       from: [cloudKitShareMetadata], into: shareStore
     ) { _, error in
       if let error = error {
-          DebugLogger.log("acceptShareInvitation error :\(error)")
+          DebugLogger.log("acceptShareInvitation error :\(error)", level: .error)
       }
     }
   }
