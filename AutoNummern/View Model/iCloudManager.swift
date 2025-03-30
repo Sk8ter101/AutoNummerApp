@@ -14,7 +14,7 @@ class iCloudManager: ObservableObject {
     private var container: CKContainer
     
     init() {
-        self.container = CKContainer(identifier: "iCloud.com.olaf.hennig.Autonummern")
+        self.container = CKContainer(identifier: "iCloud.com.olaf.hennig.AutoNummernSpiel")
         self.database = self.container.publicCloudDatabase
         configureLogging()
     }

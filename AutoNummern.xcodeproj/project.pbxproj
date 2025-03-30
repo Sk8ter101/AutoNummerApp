@@ -22,6 +22,7 @@
 		CCB1A9EA2B6EA46A003A53D6 /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9E92B6EA46A003A53D6 /* CoreDataStack.swift */; };
 		CCB1A9F52B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9F32B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift */; };
 		CCB1A9F62B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9F42B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift */; };
+		CCD146FF2D8F1D3B00B0CCE3 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CCD146FE2D8F1D3B00B0CCE3 /* CloudKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +63,7 @@
 		CCB1A9F42B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoreDataAutoNummer+CoreDataProperties.swift"; sourceTree = "<group>"; };
 		CCB1A9F72B77BDCA003A53D6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CCD059D42B407B3D00939C76 /* AutoNummern.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AutoNummern.entitlements; sourceTree = "<group>"; };
+		CCD146FE2D8F1D3B00B0CCE3 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,6 +71,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CCD146FF2D8F1D3B00B0CCE3 /* CloudKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -95,6 +98,7 @@
 				4FE1F10A2B35ACDC0023E42B /* AutoNummern */,
 				4FE1F11B2B35ACDE0023E42B /* AutoNummernTests */,
 				4FE1F1252B35ACDE0023E42B /* AutoNummernUITests */,
+				CCD146FD2D8F1D3B00B0CCE3 /* Frameworks */,
 				4FE1F1092B35ACDC0023E42B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -177,6 +181,14 @@
 				CCB1A9E92B6EA46A003A53D6 /* CoreDataStack.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		CCD146FD2D8F1D3B00B0CCE3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CCD146FE2D8F1D3B00B0CCE3 /* CloudKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -492,7 +504,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -527,7 +539,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

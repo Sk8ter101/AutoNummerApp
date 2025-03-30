@@ -68,8 +68,8 @@ final class CloudSharingCoordinator: NSObject, UICloudSharingControllerDelegate 
   }
 
     func itemTitle(for csc: UICloudSharingController) -> String? {
-      "AktuelleAutonummer"
-  }
+        return "AktuelleAutonummer"
+    }
 
   func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: Error) {
       DebugLogger.log("Failed to save share: \(error)", level: .error)

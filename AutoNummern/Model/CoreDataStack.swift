@@ -40,58 +40,52 @@ final class CoreDataStack: ObservableObject {
 
   lazy var persistentContainer: NSPersistentCloudKitContainer = {
     let container = NSPersistentCloudKitContainer(name: "AutoNrModel")
-
+    
+    // Private Store konfigurieren
     guard let privateStoreDescription = container.persistentStoreDescriptions.first else {
-      fatalError("Unable to get persistentStoreDescription")
+        fatalError("Konnte private Store Description nicht finden")
     }
-    let storesURL = privateStoreDescription.url?.deletingLastPathComponent()
-    privateStoreDescription.url = storesURL?.appendingPathComponent("private.sqlite")
-    let sharedStoreURL = storesURL?.appendingPathComponent("shared.sqlite")
-    guard let sharedStoreDescription = privateStoreDescription.copy() as? NSPersistentStoreDescription else {
-      fatalError("Copying the private store description returned an unexpected value.")
-    }
-    sharedStoreDescription.url = sharedStoreURL
-
-    guard let containerIdentifier = privateStoreDescription.cloudKitContainerOptions?.containerIdentifier else {
-      fatalError("Unable to get containerIdentifier")
-    }
-    let sharedStoreOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: containerIdentifier)
-    sharedStoreOptions.databaseScope = .shared
-    sharedStoreDescription.cloudKitContainerOptions = sharedStoreOptions
-    container.persistentStoreDescriptions.append(sharedStoreDescription)
-
-    container.loadPersistentStores { loadedStoreDescription, error in
-      if let error = error as NSError? {
-        fatalError("Failed to load persistent stores: \(error)")
-      } else if let cloudKitContainerOptions = loadedStoreDescription.cloudKitContainerOptions {
-        guard let loadedStoreDescritionURL = loadedStoreDescription.url else {
-          return
+    
+    let privateOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: "iCloud.com.olaf.hennig.AutoNummernSpiel")
+    privateOptions.databaseScope = .private
+    privateStoreDescription.cloudKitContainerOptions = privateOptions
+    
+    // Shared Store konfigurieren
+    let sharedStoreURL = privateStoreDescription.url?.deletingLastPathComponent().appendingPathComponent("shared.sqlite")
+    let sharedStoreDescription = NSPersistentStoreDescription(url: sharedStoreURL!)
+    
+    let sharedOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: "iCloud.com.olaf.hennig.AutoNummernSpiel")
+    sharedOptions.databaseScope = .shared
+    sharedStoreDescription.cloudKitContainerOptions = sharedOptions
+    
+    // Beide Store Descriptions setzen
+    container.persistentStoreDescriptions = [privateStoreDescription, sharedStoreDescription]
+    
+    container.loadPersistentStores { description, error in
+        if let error = error {
+            fatalError("Core Data Store konnte nicht geladen werden: \(error)")
         }
-
-        if cloudKitContainerOptions.databaseScope == .private {
-          let privateStore = container.persistentStoreCoordinator.persistentStore(for: loadedStoreDescritionURL)
-          self._privatePersistentStore = privateStore
-        } else if cloudKitContainerOptions.databaseScope == .shared {
-          let sharedStore = container.persistentStoreCoordinator.persistentStore(for: loadedStoreDescritionURL)
-          self._sharedPersistentStore = sharedStore
-        }
-      }
     }
-
-    container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+    
     container.viewContext.automaticallyMergesChangesFromParent = true
-    do {
-      try container.viewContext.setQueryGenerationFrom(.current)
-    } catch {
-      fatalError("Failed to pin viewContext to the current generation: \(error)")
-    }
-
+    container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+    
+    container.persistentStoreDescriptions.first?.setOption(true as NSNumber, 
+        forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+    
+    container.persistentStoreDescriptions.first?.cloudKitContainerOptions?.databaseScope = .private
+    
     return container
   }()
 
   private var _privatePersistentStore: NSPersistentStore?
   private var _sharedPersistentStore: NSPersistentStore?
-  private init() {}
+  private init() {
+    #if DEBUG
+    UserDefaults.standard.setValue("com.apple.CoreData", forKey: "com.apple.CoreData.CloudKitDebug")
+    UserDefaults.standard.setValue("com.apple.CoreData", forKey: "com.apple.CoreData.SQLDebug")
+    #endif
+  }
 }
 
 // MARK: Save or delete from Core Data
@@ -170,4 +164,30 @@ extension CoreDataStack {
     }
     return isShared
   }
+}
+
+extension CoreDataStack {
+    func setupCloudKitMonitoring() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCloudKitEvent(_:)),
+            name: NSPersistentCloudKitContainer.eventChangedNotification,
+            object: persistentContainer
+        )
+    }
+    
+    @objc private func handleCloudKitEvent(_ notification: Notification) {
+        guard let cloudEvent = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
+            as? NSPersistentCloudKitContainer.Event else {
+            return
+        }
+        
+        if cloudEvent.type == .setup {
+            print("CloudKit Setup Status: \(cloudEvent.succeeded)")
+        }
+        
+        if let error = cloudEvent.error {
+            print("CloudKit Sync Error: \(error.localizedDescription)")
+        }
+    }
 }

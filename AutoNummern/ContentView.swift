@@ -229,49 +229,29 @@ extension ContentView {
   
   private func createShare(_ autonummer: CoreDataAutoNummer) async {
     do {
+        // Wenn bereits ein Share existiert, diesen verwenden
         if let existingShare = stack.getShare(autonummer) {
             self.share = existingShare
             DebugLogger.log("Existierender Share gefunden mit Teilnehmern: \(existingShare.participants.count)")
             DebugLogger.log("Share URL: \(existingShare.url?.absoluteString ?? "keine URL")")
+            return
+        }
+        
+        // Erstellen und speichern des Shares
+        let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
+        share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
+        
+        // Speichern des Shares auf dem Server
+        try await stack.persistentContainer.persistUpdatedShare(share, in: stack.sharedPersistentStore)
+        
+        // Überprüfen ob der Share erfolgreich erstellt wurde
+        if let persistedShare = stack.getShare(autonummer) {
+            self.share = persistedShare
+            DebugLogger.log("Neuer Share erfolgreich erstellt und gespeichert", level: .info)
+            DebugLogger.log("Neue Share URL: \(persistedShare.url?.absoluteString ?? "keine URL")", level: .debug)
+            DebugLogger.log("Share Besitzer: \(persistedShare.owner.userIdentity.nameComponents?.formatted() ?? "unbekannt")", level: .debug)
         } else {
-            // Retry-Logik für Share-Erstellung
-            var retryCount = 0
-            var success = false
-            
-            while !success && retryCount < 3 {
-                do {
-                    // Erstellen und speichern des Shares
-                    let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
-                    share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
-                    
-                    // Speichern des Shares auf dem Server
-                    try await stack.persistentContainer.persistUpdatedShare(share, in: stack.sharedPersistentStore)
-                    
-                    // Überprüfen ob der Share erfolgreich erstellt wurde
-                    if let persistedShare = stack.getShare(autonummer) {
-                        self.share = persistedShare
-                        success = true
-                        DebugLogger.log("Neuer Share erfolgreich erstellt und gespeichert", level: .info)
-                        DebugLogger.log("Neue Share URL: \(persistedShare.url?.absoluteString ?? "keine URL")", level: .debug)
-                        DebugLogger.log("Share Besitzer: \(persistedShare.owner.userIdentity.nameComponents?.formatted() ?? "unbekannt")", level: .debug)
-                    } else {
-                        throw NSError(domain: "ShareError", code: -2, userInfo: [NSLocalizedDescriptionKey: "Share wurde nicht persistiert"])
-                    }
-                } catch {
-                    retryCount += 1
-                    DebugLogger.log("Fehler beim Share-Vorgang (Versuch \(retryCount)/3): \(error.localizedDescription)", level: .error)
-                    if let ckError = error as? CKError {
-                        DebugLogger.log("CloudKit Fehler Code: \(ckError.errorCode)", level: .error)
-                    }
-                    if retryCount < 3 {
-                        try await Task.sleep(nanoseconds: UInt64(1_000_000_000 * retryCount)) // Exponentielles Backoff
-                    }
-                }
-            }
-            
-            if !success {
-                DebugLogger.log("Share konnte nach 3 Versuchen nicht erstellt werden", level: .error)
-            }
+            throw NSError(domain: "ShareError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Share wurde nicht persistiert"])
         }
     } catch {
         DebugLogger.log("Unerwarteter Fehler beim Share-Vorgang: \(error.localizedDescription)", level: .error)
@@ -280,6 +260,16 @@ extension ContentView {
         }
     }
   }
+    
+//    private func createShare(_ autonummer: CoreDataAutoNummer) async {
+//      do {
+//        let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
+//        share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
+//        self.share = share
+//      } catch {
+//        print("Failed to create share")
+//      }
+//    }
 
   private func logShareStatus() {
       guard FetchedCoreNumber.first != nil else { 
