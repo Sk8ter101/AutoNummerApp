@@ -106,16 +106,22 @@ struct ContentView: View {
             Button {
                 Task {
                     do {
+                        // Sichere Prüfung ob Datensatz existiert
+                        guard let firstNumber = FetchedCoreNumber.first else {
+                            DebugLogger.log("Kein Datensatz zum Teilen vorhanden", level: .warning)
+                            return
+                        }
+
                         // Timeout nach 30 Sekunden
                         try await withTimeout(seconds: 30) {
-                            if !stack.isShared(object: FetchedCoreNumber.first!) {
-                                await createShare(FetchedCoreNumber.first!)
+                            if !stack.isShared(object: firstNumber) {
+                                await createShare(firstNumber)
                             }
                             showShareSheet = true
                             return () // Expliziter Return für Void
                         }
                     } catch {
-                        DebugLogger.log("Sharing timeout or error: \(error)")
+                        DebugLogger.log("Sharing timeout or error: \(error)", level: .error)
                     }
                 }
             } label: {
@@ -123,11 +129,11 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showShareSheet, content: {
-          if let share = share {
+          if let share = share, let firstNumber = FetchedCoreNumber.first {
             CloudSharingView(
               share: share,
               container: stack.ckContainer,
-              autonummer: FetchedCoreNumber.first!
+              autonummer: firstNumber
             )
           }
         })
@@ -140,13 +146,18 @@ struct ContentView: View {
                 selectedNumber = 1
                 DebugLogger.log("Keine Einträge gefunden, setze selectedNumber = 1")
             } else {
+                let lastIndex = FetchedCoreNumber.count - 1
                 DebugLogger.logCoreDataStatus(
                     count: FetchedCoreNumber.count,
-                    lastNumber: Int(FetchedCoreNumber[FetchedCoreNumber.count-1].nummer)
+                    lastNumber: Int(FetchedCoreNumber[lastIndex].nummer)
                 )
-                coreDataIndex = FetchedCoreNumber.count-1
-                selectedNumber = Int(FetchedCoreNumber[coreDataIndex!].nummer)
-                self.share = stack.getShare(FetchedCoreNumber.first!)
+                coreDataIndex = lastIndex
+                selectedNumber = Int(FetchedCoreNumber[lastIndex].nummer)
+
+                // Sicherer Zugriff auf ersten Datensatz
+                if let firstNumber = FetchedCoreNumber.first {
+                    self.share = stack.getShare(firstNumber)
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)

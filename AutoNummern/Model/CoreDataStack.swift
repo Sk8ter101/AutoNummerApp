@@ -40,41 +40,63 @@ final class CoreDataStack: ObservableObject {
 
   lazy var persistentContainer: NSPersistentCloudKitContainer = {
     let container = NSPersistentCloudKitContainer(name: "AutoNrModel")
-    
+
     // Private Store konfigurieren
     guard let privateStoreDescription = container.persistentStoreDescriptions.first else {
         fatalError("Konnte private Store Description nicht finden")
     }
-    
+
     let privateOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: "iCloud.com.olaf.hennig.AutoNummernSpiel")
     privateOptions.databaseScope = .private
     privateStoreDescription.cloudKitContainerOptions = privateOptions
-    
-    // Shared Store konfigurieren
-    let sharedStoreURL = privateStoreDescription.url?.deletingLastPathComponent().appendingPathComponent("shared.sqlite")
-    let sharedStoreDescription = NSPersistentStoreDescription(url: sharedStoreURL!)
-    
+
+    // Shared Store konfigurieren - mit sicherem URL handling
+    guard let privateURL = privateStoreDescription.url,
+          let sharedStoreURL = privateURL.deletingLastPathComponent().appendingPathComponent("shared.sqlite") as URL? else {
+        fatalError("Konnte Shared Store URL nicht erstellen")
+    }
+
+    let sharedStoreDescription = NSPersistentStoreDescription(url: sharedStoreURL)
+
     let sharedOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: "iCloud.com.olaf.hennig.AutoNummernSpiel")
     sharedOptions.databaseScope = .shared
     sharedStoreDescription.cloudKitContainerOptions = sharedOptions
-    
+
+    // Remote Change Notifications aktivieren
+    privateStoreDescription.setOption(true as NSNumber,
+        forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+    sharedStoreDescription.setOption(true as NSNumber,
+        forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+
     // Beide Store Descriptions setzen
     container.persistentStoreDescriptions = [privateStoreDescription, sharedStoreDescription]
-    
-    container.loadPersistentStores { description, error in
+
+    container.loadPersistentStores { [weak self] description, error in
         if let error = error {
             fatalError("Core Data Store konnte nicht geladen werden: \(error)")
         }
+
+        // KRITISCHER FIX: Persistent Stores zuweisen basierend auf database scope
+        guard let loadedStore = container.persistentStoreCoordinator.persistentStores.first(where: {
+            $0.url == description.url
+        }) else {
+            DebugLogger.log("Warnung: Konnte geladenen Store nicht finden für URL: \(description.url?.path ?? "unknown")", level: .warning)
+            return
+        }
+
+        if description.cloudKitContainerOptions?.databaseScope == .private {
+            self?._privatePersistentStore = loadedStore
+            DebugLogger.log("Private Store initialisiert: \(description.url?.lastPathComponent ?? "unknown")", level: .info)
+        } else if description.cloudKitContainerOptions?.databaseScope == .shared {
+            self?._sharedPersistentStore = loadedStore
+            DebugLogger.log("Shared Store initialisiert: \(description.url?.lastPathComponent ?? "unknown")", level: .info)
+        }
     }
-    
+
     container.viewContext.automaticallyMergesChangesFromParent = true
-    container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-    
-    container.persistentStoreDescriptions.first?.setOption(true as NSNumber, 
-        forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
-    
-    container.persistentStoreDescriptions.first?.cloudKitContainerOptions?.databaseScope = .private
-    
+    // FIX: Korrekter Merge Policy - Server-Daten haben Vorrang für iCloud-Sync
+    container.viewContext.mergePolicy = NSMergeByPropertyStoreTrumpMergePolicy
+
     return container
   }()
 
@@ -124,25 +146,42 @@ extension CoreDataStack {
 
   func isOwner(object: NSManagedObject) -> Bool {
     guard isShared(object: object) else { return false }
-    guard let share = try? persistentContainer.fetchShares(matching: [object.objectID])[object.objectID] else {
-        DebugLogger.log("Get ckshare error")
+
+    do {
+      let shareDictionary = try persistentContainer.fetchShares(matching: [object.objectID])
+      guard let share = shareDictionary[object.objectID] else {
+        DebugLogger.log("Share nicht gefunden beim Prüfen des Besitzers", level: .warning)
+        return false
+      }
+
+      if let currentUser = share.currentUserParticipant, currentUser == share.owner {
+        return true
+      }
+      return false
+    } catch {
+      DebugLogger.log("Fehler beim Prüfen des Share-Besitzers: \(error.localizedDescription)", level: .error)
       return false
     }
-    if let currentUser = share.currentUserParticipant, currentUser == share.owner {
-      return true
-    }
-    return false
   }
 
     func getShare(_ autonummer: CoreDataAutoNummer) -> CKShare? {
     guard isShared(object: autonummer) else { return nil }
-    guard let shareDictionary = try? persistentContainer.fetchShares(matching: [autonummer.objectID]),
-      let share = shareDictionary[autonummer.objectID] else {
-        DebugLogger.log("Unable to get CKShare")
+
+    do {
+      let shareDictionary = try persistentContainer.fetchShares(matching: [autonummer.objectID])
+      guard let share = shareDictionary[autonummer.objectID] else {
+        DebugLogger.log("Share nicht im Dictionary gefunden für ObjectID: \(autonummer.objectID)", level: .warning)
+        return nil
+      }
+      share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
+      return share
+    } catch {
+      DebugLogger.log("Fehler beim Laden des CKShare: \(error.localizedDescription)", level: .error)
+      if let ckError = error as? CKError {
+        DebugLogger.log("CloudKit Error Code: \(ckError.code.rawValue)", level: .error)
+      }
       return nil
     }
-    share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
-    return share
   }
 
   private func isShared(objectID: NSManagedObjectID) -> Bool {
@@ -181,13 +220,59 @@ extension CoreDataStack {
             as? NSPersistentCloudKitContainer.Event else {
             return
         }
-        
-        if cloudEvent.type == .setup {
-            print("CloudKit Setup Status: \(cloudEvent.succeeded)")
+
+        // Detaillierte Event-Behandlung für verschiedene Typen
+        switch cloudEvent.type {
+        case .setup:
+            if cloudEvent.succeeded {
+                DebugLogger.log("CloudKit Setup erfolgreich", level: .info)
+            } else {
+                DebugLogger.log("CloudKit Setup fehlgeschlagen", level: .error)
+            }
+
+        case .import:
+            if cloudEvent.succeeded {
+                DebugLogger.log("CloudKit Import erfolgreich abgeschlossen", level: .info)
+            } else {
+                DebugLogger.log("CloudKit Import fehlgeschlagen", level: .warning)
+            }
+
+        case .export:
+            if cloudEvent.succeeded {
+                DebugLogger.log("CloudKit Export erfolgreich abgeschlossen", level: .info)
+            } else {
+                DebugLogger.log("CloudKit Export fehlgeschlagen", level: .warning)
+            }
+
+        @unknown default:
+            DebugLogger.log("Unbekannter CloudKit Event-Typ", level: .debug)
         }
-        
+
+        // Fehlerbehandlung mit Details
         if let error = cloudEvent.error {
-            print("CloudKit Sync Error: \(error.localizedDescription)")
+            DebugLogger.log("CloudKit Sync Error: \(error.localizedDescription)", level: .error)
+
+            if let ckError = error as? CKError {
+                DebugLogger.log("CloudKit Error Code: \(ckError.code.rawValue)", level: .error)
+
+                // Spezielle Behandlung für häufige Fehler
+                switch ckError.code {
+                case .networkUnavailable, .networkFailure:
+                    DebugLogger.log("Netzwerkproblem - Sync wird automatisch wiederholt", level: .warning)
+
+                case .notAuthenticated:
+                    DebugLogger.log("iCloud Account nicht angemeldet", level: .error)
+
+                case .quotaExceeded:
+                    DebugLogger.log("iCloud Speicherplatz voll", level: .error)
+
+                case .zoneBusy, .serviceUnavailable:
+                    DebugLogger.log("CloudKit Service temporär nicht verfügbar - Retry erfolgt automatisch", level: .warning)
+
+                default:
+                    DebugLogger.log("CloudKit Fehlerdetails: \(ckError.localizedDescription)", level: .error)
+                }
+            }
         }
     }
 }
