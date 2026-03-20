@@ -59,11 +59,12 @@ struct ContentView: View {
 //    private var FetchCoreNumber: FetchedResults<CoreDataAutoNummer>
 
 //    @State private var Autonummer: CoreDataAutoNummer?
-    @State private var share: CKShare?   // ToDo Share muss wohl noch irgendwie gemanaged werden ?
+    @State private var share: CKShare?
     @State private var selectedNumber: Int?
     @State private var coreDataIndex: Int?
     @State private var isButtonPressed = false
     @State private var showShareSheet = false
+    @State private var isNewShare = false
     private let stack = CoreDataStack.shared
     
     var body: some View {
@@ -104,47 +105,55 @@ struct ContentView: View {
             }
             Spacer()
             Button {
-                Task {
-                    do {
-                        // Sichere Prüfung ob Datensatz existiert
-                        guard let firstNumber = FetchedCoreNumber.first else {
-                            DebugLogger.log("Kein Datensatz zum Teilen vorhanden", level: .warning)
-                            return
-                        }
-
-                        // Timeout nach 30 Sekunden
-                        try await withTimeout(seconds: 30) {
-                            if !stack.isShared(object: firstNumber) {
-                                await createShare(firstNumber)
-                            }
-                            showShareSheet = true
-                            return () // Expliziter Return für Void
-                        }
-                    } catch {
-                        DebugLogger.log("Sharing timeout or error: \(error)", level: .error)
-                    }
+                guard !showShareSheet else { return }
+                guard let firstNumber = FetchedCoreNumber.first else {
+                    DebugLogger.log("Kein Datensatz zum Teilen vorhanden", level: .warning)
+                    return
                 }
+
+                if stack.isShared(object: firstNumber), let existingShare = stack.getShare(firstNumber) {
+                    self.share = existingShare
+                    self.isNewShare = false
+                    DebugLogger.log("Existierender Share geladen mit \(existingShare.participants.count) Teilnehmern", level: .info)
+                } else {
+                    self.share = nil
+                    self.isNewShare = true
+                    DebugLogger.log("Neuer Share wird über Preparation-Handler erstellt", level: .info)
+                }
+                showShareSheet = true
             } label: {
                 Image(systemName: "square.and.arrow.up")
             }
+            .disabled(showShareSheet)
         }
-        .sheet(isPresented: $showShareSheet, content: {
-          if let share = share, let firstNumber = FetchedCoreNumber.first {
-            CloudSharingView(
-              share: share,
-              container: stack.ckContainer,
-              autonummer: firstNumber
-            )
+        .sheet(isPresented: $showShareSheet) {
+          if let firstNumber = FetchedCoreNumber.first {
+            if isNewShare {
+              // Neuer Share: Preparation-Handler erstellt den Share
+              // erst wenn der Benutzer die Einladung absendet
+              CloudSharingPrepareView(
+                container: stack.ckContainer,
+                autonummer: firstNumber
+              )
+            } else if let share = share {
+              // Existierender Share: Teilnehmer verwalten
+              CloudSharingView(
+                share: share,
+                container: stack.ckContainer,
+                autonummer: firstNumber
+              )
+            }
           }
-        })
+        }
         .background(
             LinearGradient(gradient: Gradient(colors: [.white, .blue, .white]), startPoint: .top, endPoint: .bottom))
         .onAppear {
+            // Cleanup alter Duplikate
             cleanupCoreData()
-            logShareStatus()
+            
             if FetchedCoreNumber.count == 0 {
                 selectedNumber = 1
-                DebugLogger.log("Keine Einträge gefunden, setze selectedNumber = 1")
+                DebugLogger.log("Keine Einträge gefunden, setze selectedNumber = 1", level: .debug)
             } else {
                 let lastIndex = FetchedCoreNumber.count - 1
                 DebugLogger.logCoreDataStatus(
@@ -157,35 +166,53 @@ struct ContentView: View {
                 // Sicherer Zugriff auf ersten Datensatz
                 if let firstNumber = FetchedCoreNumber.first {
                     self.share = stack.getShare(firstNumber)
+                    
+                    if stack.isShared(object: firstNumber) {
+                        DebugLogger.log("Objekt ist bereits geteilt", level: .info)
+                    } else {
+                        DebugLogger.log("Objekt ist nicht geteilt", level: .info)
+                    }
                 }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)
+            .debounce(for: .seconds(2), scheduler: DispatchQueue.global(qos: .utility))
             .receive(on: DispatchQueue.main)) { _ in
-                //fetchRemoteChanges()
-                coreDataIndex = FetchedCoreNumber.count-1
-                DebugLogger.log("\(Date().formatted(date: .omitted, time: .standard)): Notification eingetroffen. CoreDataIndex = \(coreDataIndex ?? 0). Aktuelle Nummer = \(selectedNumber ?? 0). FetchedCoreNumber = \(FetchedCoreNumber[coreDataIndex ?? 0].nummer)", level: .info)
-                    //selectedNumber = Int(CoreNumber[CoreNumber.count-1].nummer)
-                managedObjectContext.perform {
-                    do {
-                        try managedObjectContext.save()
-                    } catch {
-                        DebugLogger.log("\(Date().formatted(date: .omitted, time: .standard)): Failed to save changes: \(error.localizedDescription)", level: .error)
-                    }
+                // Nach Remote-Änderungen die aktuelle Nummer aktualisieren
+                guard let firstNumber = FetchedCoreNumber.first else { return }
+                
+                let newNumber = Int(firstNumber.nummer)
+                if selectedNumber != newNumber {
+                    DebugLogger.log("Nummer von anderem Gerät aktualisiert: \(selectedNumber ?? 0) → \(newNumber)", level: .info)
+                    selectedNumber = newNumber
                 }
+                
+                coreDataIndex = FetchedCoreNumber.count - 1
             }
     }
 
     private func saveNumber(_ number: Int16) {
-        cleanupCoreData() // Erst alles löschen
-        
         let context = managedObjectContext
-        let newNumber = CoreDataAutoNummer(context: context)
-        newNumber.nummer = number
+        let fetchRequest: NSFetchRequest<CoreDataAutoNummer> = CoreDataAutoNummer.fetchRequest()
         
         do {
+            let existingNumbers = try context.fetch(fetchRequest)
+            
+            if let existingNumber = existingNumbers.first {
+                // UPDATE: Vorhandenen Eintrag aktualisieren (behält Share-Verbindung)
+                existingNumber.nummer = number
+                DebugLogger.log("Nummer aktualisiert: \(number)", level: .info)
+            } else {
+                // INSERT: Neuen Eintrag erstellen (nur wenn noch keiner existiert)
+                let newNumber = CoreDataAutoNummer(context: context)
+                newNumber.nummer = number
+                DebugLogger.log("Neue Nummer erstellt: \(number)", level: .info)
+            }
+            
             try context.save()
-            DebugLogger.log("Neue Nummer gespeichert: \(number)", level: .info)
+            
+            // Cleanup alte Duplikate nach dem Speichern
+            cleanupCoreData()
         } catch {
             DebugLogger.log("Fehler beim Speichern: \(error)", level: .error)
         }
@@ -218,6 +245,8 @@ extension ContentView {
       return "Public User"
     case .unknown:
       return "Unknown"
+    case .administrator:
+      return "Administrator"
     @unknown default:
       fatalError("MyDebug: A new value added to CKShare.Participant.Role")
     }
@@ -238,50 +267,6 @@ extension ContentView {
     }
   }
   
-  private func createShare(_ autonummer: CoreDataAutoNummer) async {
-    do {
-        // Wenn bereits ein Share existiert, diesen verwenden
-        if let existingShare = stack.getShare(autonummer) {
-            self.share = existingShare
-            DebugLogger.log("Existierender Share gefunden mit Teilnehmern: \(existingShare.participants.count)")
-            DebugLogger.log("Share URL: \(existingShare.url?.absoluteString ?? "keine URL")")
-            return
-        }
-        
-        // Erstellen und speichern des Shares
-        let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
-        share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
-        
-        // Speichern des Shares auf dem Server
-        try await stack.persistentContainer.persistUpdatedShare(share, in: stack.sharedPersistentStore)
-        
-        // Überprüfen ob der Share erfolgreich erstellt wurde
-        if let persistedShare = stack.getShare(autonummer) {
-            self.share = persistedShare
-            DebugLogger.log("Neuer Share erfolgreich erstellt und gespeichert", level: .info)
-            DebugLogger.log("Neue Share URL: \(persistedShare.url?.absoluteString ?? "keine URL")", level: .debug)
-            DebugLogger.log("Share Besitzer: \(persistedShare.owner.userIdentity.nameComponents?.formatted() ?? "unbekannt")", level: .debug)
-        } else {
-            throw NSError(domain: "ShareError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Share wurde nicht persistiert"])
-        }
-    } catch {
-        DebugLogger.log("Unerwarteter Fehler beim Share-Vorgang: \(error.localizedDescription)", level: .error)
-        if let ckError = error as? CKError {
-            DebugLogger.log("CloudKit Fehler Code: \(ckError.errorCode)", level: .error)
-        }
-    }
-  }
-    
-//    private func createShare(_ autonummer: CoreDataAutoNummer) async {
-//      do {
-//        let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
-//        share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
-//        self.share = share
-//      } catch {
-//        print("Failed to create share")
-//      }
-//    }
-
   private func logShareStatus() {
       guard FetchedCoreNumber.first != nil else { 
         DebugLogger.log("Kein FirstRecord gefunden", level: .warning)
@@ -296,54 +281,36 @@ extension ContentView {
     do {
         let numbers = try context.fetch(fetchRequest)
         
-        // Speichere die letzte Nummer temporär
-        let lastNumber = numbers.last?.nummer
-        DebugLogger.log("Start Löschvorgang - Letzte Nummer war: \(lastNumber ?? -1)", level: .info)
+        // Wenn nur ein Eintrag existiert, nichts tun
+        guard numbers.count > 1 else {
+            DebugLogger.log("Nur ein oder kein Eintrag vorhanden - kein Cleanup nötig", level: .info)
+            return
+        }
         
-        // Alle vorhandenen Einträge löschen
-        for number in numbers {
-            context.delete(number)
+        // Behalte den letzten (neuesten) Eintrag
+        let lastNumber = numbers.last
+        
+        DebugLogger.log("Start Cleanup - \(numbers.count) Einträge gefunden, behalte Eintrag mit Nummer: \(lastNumber?.nummer ?? -1)", level: .info)
+        
+        // Lösche alle AUSSER dem letzten Eintrag
+        for (index, number) in numbers.enumerated() {
+            if index < numbers.count - 1 {
+                DebugLogger.log("Lösche alten Eintrag: \(number.nummer)", level: .debug)
+                context.delete(number)
+            }
         }
         
         try context.save()
-        
-        // Wenn eine letzte Nummer existierte, speichere sie neu
-        if let lastNumber = lastNumber {
-            let newNumber = CoreDataAutoNummer(context: context)
-            newNumber.nummer = lastNumber
-            try context.save()
-            DebugLogger.log("Letzte Nummer wiederhergestellt: \(lastNumber)", level: .info)
-        }
         
         // Überprüfung
         let remainingNumbers = try context.fetch(fetchRequest)
         DebugLogger.log("Nach Bereinigung - Anzahl Einträge: \(remainingNumbers.count)", level: .info)
         DebugLogger.log("Aktuelle Nummer: \(remainingNumbers.first?.nummer ?? -1)", level: .info)
     } catch {
-        DebugLogger.log("Fehler beim Löschen: \(error)", level: .error)
+        DebugLogger.log("Fehler beim Cleanup: \(error)", level: .error)
     }
   }
 }
-
-// Hilfsfunktion für Timeout
-func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
-    try await withThrowingTaskGroup(of: T.self) { group in
-        group.addTask {
-            try await operation()
-        }
-        
-        group.addTask {
-            try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-            throw TimeoutError()
-        }
-        
-        let result = try await group.next()!
-        group.cancelAll()
-        return result
-    }
-}
-
-struct TimeoutError: Error {}
 
 //#Preview {
 //    ContentView()

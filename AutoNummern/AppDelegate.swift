@@ -46,7 +46,10 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
     _ windowScene: UIWindowScene,
     userDidAcceptCloudKitShareWith cloudKitShareMetadata: CKShare.Metadata
   ) {
-    let shareStore = CoreDataStack.shared.sharedPersistentStore
+    guard let shareStore = CoreDataStack.shared.sharedPersistentStore else {
+      DebugLogger.log("Shared Store noch nicht geladen - Share-Einladung kann nicht angenommen werden", level: .error)
+      return
+    }
     let persistentContainer = CoreDataStack.shared.persistentContainer
     persistentContainer.acceptShareInvitations(
       from: [cloudKitShareMetadata], into: shareStore

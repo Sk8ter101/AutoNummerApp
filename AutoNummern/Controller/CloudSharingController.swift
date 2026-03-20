@@ -33,6 +33,7 @@
 import CloudKit
 import SwiftUI
 
+/// View für einen bereits existierenden Share (zum Verwalten von Teilnehmern)
 struct CloudSharingView: UIViewControllerRepresentable {
   let share: CKShare
   let container: CKContainer
@@ -48,15 +49,113 @@ struct CloudSharingView: UIViewControllerRepresentable {
     controller.modalPresentationStyle = .formSheet
     controller.delegate = context.coordinator
     
-    // Debug-Ausgaben
-    DebugLogger.log("Share Controller created", level: .debug)
+    DebugLogger.log("Share Controller created (existierender Share)", level: .debug)
     DebugLogger.log("Share participants: \(share.participants.count)", level: .debug)
-    DebugLogger.log("Container ID: \(container.containerIdentifier ?? "No ID")", level: .debug)
     
     return controller
   }
 
   func updateUIViewController(_ uiViewController: UICloudSharingController, context: Context) {
+  }
+}
+
+/// Wrapper-ViewController der den UICloudSharingController über die
+/// UIKit-Präsentationskette anzeigt. UICloudSharingController funktioniert
+/// nicht korrekt wenn er direkt als SwiftUI .sheet Content eingebettet wird –
+/// der Preparation-Handler wird dann nie aufgerufen.
+struct CloudSharingPrepareView: UIViewControllerRepresentable {
+  let container: CKContainer
+  let autonummer: CoreDataAutoNummer
+  @Environment(\.dismiss) private var dismiss
+
+  func makeCoordinator() -> CloudSharingPrepareCoordinator {
+    CloudSharingPrepareCoordinator(autonummer: autonummer, dismiss: dismiss)
+  }
+
+  func makeUIViewController(context: Context) -> UIViewController {
+    let wrapper = UIViewController()
+    wrapper.view.backgroundColor = .clear
+    context.coordinator.wrapper = wrapper
+    return wrapper
+  }
+
+  func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+    // Präsentiere den UICloudSharingController sobald der Wrapper sichtbar ist.
+    // DispatchQueue.main.async stellt sicher, dass der Wrapper komplett in
+    // der View-Hierarchie eingehängt ist bevor wir darüber präsentieren.
+    guard !context.coordinator.didPresent else { return }
+    context.coordinator.didPresent = true
+    
+    let stack = CoreDataStack.shared
+    let autonummer = self.autonummer
+    let container = self.container
+    let coordinator = context.coordinator
+    
+    DispatchQueue.main.async {
+      guard let presenter = uiViewController.view.window != nil ? uiViewController : nil else {
+        DebugLogger.log("Wrapper hat kein Window - kann Share Controller nicht präsentieren", level: .error)
+        coordinator.didPresent = false
+        return
+      }
+      
+      let sharingController = UICloudSharingController { (controller, preparationHandler: @escaping (CKShare?, CKContainer?, Error?) -> Void) in
+        DebugLogger.log("Preparation-Handler aufgerufen - erstelle Share...", level: .info)
+        Task { @MainActor in
+          do {
+            let (_, share, _) = try await stack.persistentContainer.share([autonummer], to: nil)
+            share[CKShare.SystemFieldKey.title] = "AktuelleAutonummer"
+            DebugLogger.log("Share über Preparation-Handler erstellt", level: .info)
+            DebugLogger.log("Share URL: \(share.url?.absoluteString ?? "keine URL")", level: .debug)
+            preparationHandler(share, container, nil)
+          } catch {
+            DebugLogger.log("Fehler beim Erstellen des Shares: \(error)", level: .error)
+            preparationHandler(nil, nil, error)
+          }
+        }
+      }
+      
+      sharingController.modalPresentationStyle = .formSheet
+      sharingController.delegate = coordinator
+      
+      DebugLogger.log("Share Controller wird über UIKit präsentiert", level: .debug)
+      presenter.present(sharingController, animated: true)
+    }
+  }
+}
+
+/// Coordinator für CloudSharingPrepareView – schließt das SwiftUI .sheet
+/// wenn der UICloudSharingController geschlossen wird.
+final class CloudSharingPrepareCoordinator: NSObject, UICloudSharingControllerDelegate {
+  let stack = CoreDataStack.shared
+  let autonummer: CoreDataAutoNummer
+  let dismiss: DismissAction
+  var wrapper: UIViewController?
+  var didPresent = false
+
+  init(autonummer: CoreDataAutoNummer, dismiss: DismissAction) {
+    self.autonummer = autonummer
+    self.dismiss = dismiss
+  }
+
+  func itemTitle(for csc: UICloudSharingController) -> String? {
+    return "AktuelleAutonummer"
+  }
+
+  func cloudSharingController(_ csc: UICloudSharingController, failedToSaveShareWithError error: Error) {
+    DebugLogger.log("Failed to save share: \(error)", level: .error)
+    dismiss()
+  }
+
+  func cloudSharingControllerDidSaveShare(_ csc: UICloudSharingController) {
+    DebugLogger.log("Saved the share", level: .info)
+    dismiss()
+  }
+
+  func cloudSharingControllerDidStopSharing(_ csc: UICloudSharingController) {
+    if !stack.isOwner(object: autonummer) {
+      stack.delete(autonummer)
+    }
+    dismiss()
   }
 }
 
