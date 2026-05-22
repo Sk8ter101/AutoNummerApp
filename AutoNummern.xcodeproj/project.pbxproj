@@ -14,10 +14,14 @@
 		4FE1F11D2B35ACDE0023E42B /* AutoNummernTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE1F11C2B35ACDE0023E42B /* AutoNummernTests.swift */; };
 		4FE1F1272B35ACDE0023E42B /* AutoNummernUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE1F1262B35ACDE0023E42B /* AutoNummernUITests.swift */; };
 		4FE1F1292B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE1F1282B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift */; };
-		CC3A3C412CB2F62E00C2501C /* CloudSharingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3A3C3F2CB2F62E00C2501C /* CloudSharingController.swift */; };
+		CC17A1E02FC0F295000CD0C4 /* NumberButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC17A1DF2FC0F295000CD0C4 /* NumberButton.swift */; };
+		CC17A1E22FC0F2A0000CD0C4 /* CloudSharingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC17A1E12FC0F2A0000CD0C4 /* CloudSharingView.swift */; };
+		CC17A1E42FC0F2AF000CD0C4 /* CloudSharingPrepareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC17A1E32FC0F2AF000CD0C4 /* CloudSharingPrepareView.swift */; };
+		CC17A1E62FC0F2B9000CD0C4 /* CloudSharingCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC17A1E52FC0F2B9000CD0C4 /* CloudSharingCoordinator.swift */; };
+		CC17A1E82FC0F2C1000CD0C4 /* CloudSharingPrepareCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC17A1E72FC0F2C1000CD0C4 /* CloudSharingPrepareCoordinator.swift */; };
+		CC17A1EA2FC0F2F8000CD0C4 /* ShareSheetMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC17A1E92FC0F2F8000CD0C4 /* ShareSheetMode.swift */; };
 		CC3A3C432CBC0B1800C2501C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3A3C422CBC0B1800C2501C /* AppDelegate.swift */; };
 		CC9188D62D3D8D9C004A1BFB /* DebugLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC9188D52D3D8D9C004A1BFB /* DebugLogger.swift */; };
-		CCA409F72B66DF1300FF9724 /* iCloudManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA409F62B66DF1300FF9724 /* iCloudManager.swift */; };
 		CCB1A9E72B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9E52B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld */; };
 		CCB1A9EA2B6EA46A003A53D6 /* CoreDataStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9E92B6EA46A003A53D6 /* CoreDataStack.swift */; };
 		CCB1A9F52B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB1A9F32B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift */; };
@@ -53,10 +57,14 @@
 		4FE1F1222B35ACDE0023E42B /* AutoNummernUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AutoNummernUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FE1F1262B35ACDE0023E42B /* AutoNummernUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoNummernUITests.swift; sourceTree = "<group>"; };
 		4FE1F1282B35ACDE0023E42B /* AutoNummernUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoNummernUITestsLaunchTests.swift; sourceTree = "<group>"; };
-		CC3A3C3F2CB2F62E00C2501C /* CloudSharingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSharingController.swift; sourceTree = "<group>"; };
+		CC17A1DF2FC0F295000CD0C4 /* NumberButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumberButton.swift; sourceTree = "<group>"; };
+		CC17A1E12FC0F2A0000CD0C4 /* CloudSharingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSharingView.swift; sourceTree = "<group>"; };
+		CC17A1E32FC0F2AF000CD0C4 /* CloudSharingPrepareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSharingPrepareView.swift; sourceTree = "<group>"; };
+		CC17A1E52FC0F2B9000CD0C4 /* CloudSharingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSharingCoordinator.swift; sourceTree = "<group>"; };
+		CC17A1E72FC0F2C1000CD0C4 /* CloudSharingPrepareCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSharingPrepareCoordinator.swift; sourceTree = "<group>"; };
+		CC17A1E92FC0F2F8000CD0C4 /* ShareSheetMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheetMode.swift; sourceTree = "<group>"; };
 		CC3A3C422CBC0B1800C2501C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		CC9188D52D3D8D9C004A1BFB /* DebugLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogger.swift; sourceTree = "<group>"; };
-		CCA409F62B66DF1300FF9724 /* iCloudManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iCloudManager.swift; sourceTree = "<group>"; };
 		CCB1A9E62B6EA0A6003A53D6 /* AutoNrModel.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = AutoNrModel.xcdatamodel; sourceTree = "<group>"; };
 		CCB1A9E92B6EA46A003A53D6 /* CoreDataStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreDataStack.swift; sourceTree = "<group>"; };
 		CCB1A9F32B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoreDataAutoNummer+CoreDataClass.swift"; sourceTree = "<group>"; };
@@ -127,6 +135,8 @@
 				4FE1F10D2B35ACDC0023E42B /* ContentView.swift */,
 				4FE1F10F2B35ACDE0023E42B /* Assets.xcassets */,
 				4FE1F1112B35ACDE0023E42B /* Preview Content */,
+				CC17A1DF2FC0F295000CD0C4 /* NumberButton.swift */,
+				CC17A1E92FC0F2F8000CD0C4 /* ShareSheetMode.swift */,
 			);
 			path = AutoNummern;
 			sourceTree = "<group>";
@@ -159,7 +169,10 @@
 		CC3A3C402CB2F62E00C2501C /* Controller */ = {
 			isa = PBXGroup;
 			children = (
-				CC3A3C3F2CB2F62E00C2501C /* CloudSharingController.swift */,
+				CC17A1E12FC0F2A0000CD0C4 /* CloudSharingView.swift */,
+				CC17A1E32FC0F2AF000CD0C4 /* CloudSharingPrepareView.swift */,
+				CC17A1E52FC0F2B9000CD0C4 /* CloudSharingCoordinator.swift */,
+				CC17A1E72FC0F2C1000CD0C4 /* CloudSharingPrepareCoordinator.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -167,7 +180,6 @@
 		CCA409F52B66DAFE00FF9724 /* View Model */ = {
 			isa = PBXGroup;
 			children = (
-				CCA409F62B66DF1300FF9724 /* iCloudManager.swift */,
 			);
 			path = "View Model";
 			sourceTree = "<group>";
@@ -321,15 +333,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CC17A1EA2FC0F2F8000CD0C4 /* ShareSheetMode.swift in Sources */,
 				CCB1A9EA2B6EA46A003A53D6 /* CoreDataStack.swift in Sources */,
+				CC17A1E42FC0F2AF000CD0C4 /* CloudSharingPrepareView.swift in Sources */,
 				4FE1F10E2B35ACDC0023E42B /* ContentView.swift in Sources */,
-				CCA409F72B66DF1300FF9724 /* iCloudManager.swift in Sources */,
 				CC9188D62D3D8D9C004A1BFB /* DebugLogger.swift in Sources */,
+				CC17A1E22FC0F2A0000CD0C4 /* CloudSharingView.swift in Sources */,
+				CC17A1E82FC0F2C1000CD0C4 /* CloudSharingPrepareCoordinator.swift in Sources */,
 				CC3A3C432CBC0B1800C2501C /* AppDelegate.swift in Sources */,
 				CCB1A9F62B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataProperties.swift in Sources */,
 				CCB1A9E72B6EA0A6003A53D6 /* AutoNrModel.xcdatamodeld in Sources */,
 				4FE1F10C2B35ACDC0023E42B /* AutoNummernApp.swift in Sources */,
-				CC3A3C412CB2F62E00C2501C /* CloudSharingController.swift in Sources */,
+				CC17A1E62FC0F2B9000CD0C4 /* CloudSharingCoordinator.swift in Sources */,
+				CC17A1E02FC0F295000CD0C4 /* NumberButton.swift in Sources */,
 				CCB1A9F52B6FE654003A53D6 /* CoreDataAutoNummer+CoreDataClass.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

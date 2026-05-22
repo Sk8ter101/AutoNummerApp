@@ -117,12 +117,21 @@ final class CoreDataStack: ObservableObject {
   private var _sharedPersistentStore: NSPersistentStore?
   /// Verhindert mehrfachen Cleanup im selben App-Lebenszyklus
   private var didResetStoresThisSession = false
+  /// Wird true gesetzt, wenn die lokalen Stores wegen eines CloudKit Zone-Resets
+  /// geleert wurden. Die UI bindet sich an dieses Flag, um einen Hinweis-Alert
+  /// anzuzeigen, der den Benutzer zum manuellen Neustart auffordert.
+  @Published var needsManualRestart: Bool = false
 
   private init() {
     #if DEBUG
     UserDefaults.standard.setValue("com.apple.CoreData", forKey: "com.apple.CoreData.CloudKitDebug")
     UserDefaults.standard.setValue("com.apple.CoreData", forKey: "com.apple.CoreData.SQLDebug")
     #endif
+
+    // Stelle sicher, dass der persistente Container geladen ist,
+    // bevor wir auf CloudKit-Events lauschen.
+    _ = persistentContainer
+    setupCloudKitMonitoring()
   }
 }
 
@@ -200,6 +209,13 @@ extension CoreDataStack {
     }
   }
 
+  /// Liefert aus einer Liste von Objekten dasjenige, das aktuell einen CKShare besitzt.
+  /// Wird als bevorzugter Update-Kandidat verwendet, damit die Share-Verbindung
+  /// auch nach Sync-Duplikaten erhalten bleibt.
+  func sharedObject<T: NSManagedObject>(in objects: [T]) -> T? {
+    objects.first(where: { isShared(object: $0) })
+  }
+
   private func isShared(objectID: NSManagedObjectID) -> Bool {
     var isShared = false
     if let persistentStore = objectID.persistentStore {
@@ -222,60 +238,6 @@ extension CoreDataStack {
 }
 
 extension CoreDataStack {
-    /// Bereinigt ungültige Share-Referenzen und orphaned Shares
-    func cleanupInvalidShares() {
-        let fetchRequest: NSFetchRequest<CoreDataAutoNummer> = CoreDataAutoNummer.fetchRequest()
-        
-        context.perform {
-            do {
-                let allNumbers = try self.context.fetch(fetchRequest)
-                
-                // Prüfe alle Objekte auf ungültige Shares
-                for number in allNumbers {
-                    if self.isShared(object: number) {
-                        // Versuche den Share zu laden
-                        if self.getShare(number) != nil {
-                            DebugLogger.log("Gültiger Share gefunden für Nummer: \(number.nummer)", level: .debug)
-                        } else {
-                            DebugLogger.log("Ungültiger Share gefunden - Objekt wird lokalisiert: \(number.nummer)", level: .warning)
-                            // Hier könnten Sie das Objekt "de-sharen" wenn nötig
-                            // Das würde aber den Share komplett entfernen
-                        }
-                    }
-                }
-                
-                // Optionale zusätzliche Bereinigung: Alle Shares auflisten
-                self.logAllShares()
-                
-            } catch {
-                DebugLogger.log("Fehler beim Cleanup von Shares: \(error)", level: .error)
-            }
-        }
-    }
-    
-    /// Loggt alle aktiven Shares für Debugging
-    private func logAllShares() {
-        let fetchRequest: NSFetchRequest<CoreDataAutoNummer> = CoreDataAutoNummer.fetchRequest()
-        
-        do {
-            let allNumbers = try context.fetch(fetchRequest)
-            let objectIDs = allNumbers.map { $0.objectID }
-            
-            let shareDictionary = try persistentContainer.fetchShares(matching: objectIDs)
-            
-            DebugLogger.log("=== Aktive Shares ===", level: .info)
-            for (objectID, share) in shareDictionary {
-                DebugLogger.log("ObjectID: \(objectID)", level: .debug)
-                DebugLogger.log("Share URL: \(share.url?.absoluteString ?? "keine URL")", level: .debug)
-                DebugLogger.log("Teilnehmer: \(share.participants.count)", level: .debug)
-            }
-            DebugLogger.log("=== Ende Shares ===", level: .info)
-            
-        } catch {
-            DebugLogger.log("Fehler beim Auflisten der Shares: \(error)", level: .error)
-        }
-    }
-    
     func setupCloudKitMonitoring() {
         NotificationCenter.default.addObserver(
             self,
@@ -376,18 +338,20 @@ extension CoreDataStack {
         return false
     }
     
-    /// Löscht alle lokalen Store-Dateien und beendet die App,
-    /// damit beim nächsten Start frische Stores erstellt werden.
+    /// Räumt nach einem CloudKit Zone-Reset die lokalen Stores auf und setzt
+    /// `needsManualRestart`, damit die UI den Benutzer zum Neustart auffordert.
+    /// Ein programmatisches `exit(0)` ist auf iOS App-Store-konform nicht
+    /// erlaubt und ein Reload der Stores innerhalb desselben Prozesses ist
+    /// bei NSPersistentCloudKitContainer nicht zuverlässig möglich.
     private func handleZoneDeletedError() {
         guard !didResetStoresThisSession else {
             DebugLogger.log("Store-Reset wurde in dieser Session bereits durchgeführt - ignoriere weiteren zoneNotFound-Fehler", level: .warning)
             return
         }
         didResetStoresThisSession = true
-        
-        DebugLogger.log("Zone Not Found erkannt - lokale Stores werden gelöscht und App wird neu gestartet", level: .error)
-        
-        // Store-URLs ermitteln
+
+        DebugLogger.log("Zone Not Found erkannt - lokale Stores werden geleert, Benutzer wird zum Neustart aufgefordert", level: .error)
+
         guard let storeURL = persistentContainer.persistentStoreDescriptions.first?.url else {
             DebugLogger.log("Konnte Store-URL für Cleanup nicht ermitteln", level: .error)
             return
@@ -395,8 +359,7 @@ extension CoreDataStack {
         let storeDirectory = storeURL.deletingLastPathComponent()
         let privateURL = storeDirectory.appendingPathComponent("private.sqlite")
         let sharedURL = storeDirectory.appendingPathComponent("shared.sqlite")
-        
-        // Alle Stores entladen
+
         let coordinator = persistentContainer.persistentStoreCoordinator
         for store in coordinator.persistentStores {
             do {
@@ -408,16 +371,11 @@ extension CoreDataStack {
         }
         _privatePersistentStore = nil
         _sharedPersistentStore = nil
-        
-        // Dateien löschen
+
         Self.deleteStoreFiles(privateURL: privateURL, sharedURL: sharedURL)
-        
-        // App beenden damit beim nächsten Start frische Stores erstellt werden.
-        // Ein sofortiges Neuladen der Stores innerhalb desselben Prozesses ist
-        // bei NSPersistentCloudKitContainer nicht zuverlässig möglich.
-        DebugLogger.log("App wird jetzt beendet. Bitte erneut starten.", level: .error)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            exit(0)
+
+        Task { @MainActor [weak self] in
+            self?.needsManualRestart = true
         }
     }
     

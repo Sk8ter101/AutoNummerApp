@@ -6,312 +6,222 @@
 //
 
 import SwiftUI
-import UserNotifications
 import CloudKit
 import CoreData
 
-struct RedButton: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .frame(width: 60, height: 60)
-            .padding()
-            .background(.red)
-            .foregroundStyle(.white)
-            .clipShape(Capsule())
-            .font(.title)
-            .scaleEffect(configuration.isPressed ? 1.5 : 1)
-            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
-    }
-}
-
-struct GreenButton: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .frame(width: 60, height: 60)
-            .padding()
-            .background(.green)
-            .foregroundStyle(.white)
-            .clipShape(Capsule())
-            .font(.title)
-            .scaleEffect(configuration.isPressed ? 1.5 : 1)
-            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
-    }
-}
-
-struct GrowingButton: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding()
-            .background(.red)
-            .foregroundStyle(.white)
-            .clipShape(Capsule())
-            .scaleEffect(configuration.isPressed ? 1.2 : 1)
-            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
-    }
-}
-
 struct ContentView: View {
-    
-    // Get a reference to the managed object context from the environment.
     @Environment(\.managedObjectContext) private var managedObjectContext
-    @FetchRequest(sortDescriptors: []) private var FetchedCoreNumber: FetchedResults<CoreDataAutoNummer>
-//    @FetchRequest(sortDescriptors: [])
-//    private var FetchCoreNumber: FetchedResults<CoreDataAutoNummer>
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \CoreDataAutoNummer.nummer, ascending: true)]
+    ) private var fetchedCoreNumbers: FetchedResults<CoreDataAutoNummer>
 
-//    @State private var Autonummer: CoreDataAutoNummer?
-    @State private var share: CKShare?
     @State private var selectedNumber: Int?
-    @State private var coreDataIndex: Int?
-    @State private var isButtonPressed = false
-    @State private var showShareSheet = false
-    @State private var isNewShare = false
-    private let stack = CoreDataStack.shared
-    
+    @State private var shareSheetMode: ShareSheetMode?
+    @ObservedObject private var stack = CoreDataStack.shared
+
     var body: some View {
         VStack {
-            
             VStack {
                 Text("Auto Nummern").font(.largeTitle)
                 Text("by Kira").font(.caption).italic()
-            }.padding(.top,100)
+            }
+            .padding(.top, 64)
+
             Spacer()
+
             ScrollViewReader { proxy in
                 ScrollView(.horizontal) {
-                    HStack(spacing: 10) {
-                        ForEach(1..<200,id : \.self) { number in
-                            if (selectedNumber ?? 1 >= number) {
-                                Button("\(number)", action: {
-                                    selectedNumber = number
-                                    saveNumber(Int16(number))
-                                  }
-                                )
-                                .buttonStyle(GreenButton())
-                            } else {
-                                Button("\(number)", action: {
-                                    selectedNumber = number
-                                    saveNumber(Int16(number))
-                                    DebugLogger.log("FileManager URLs: \(FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask))")
-                                  }
-                                )
-                                .buttonStyle(RedButton())
+                    LazyHStack(spacing: 10) {
+                        ForEach(1..<200, id: \.self) { number in
+                            Button("\(number)") {
+                                select(number)
                             }
+                            .buttonStyle(NumberButton(
+                                background: (selectedNumber ?? 1) >= number ? .green : .red
+                            ))
                         }
                     }
+                    .padding(.bottom)
                     .onAppear {
-                        // Springe zur vorgewählten Position
                         proxy.scrollTo(selectedNumber ?? 1, anchor: .center)
-                    }.padding(.bottom,150)
-                }
-            }
-            Spacer()
-            Button {
-                guard !showShareSheet else { return }
-                guard let firstNumber = FetchedCoreNumber.first else {
-                    DebugLogger.log("Kein Datensatz zum Teilen vorhanden", level: .warning)
-                    return
-                }
-
-                if stack.isShared(object: firstNumber), let existingShare = stack.getShare(firstNumber) {
-                    self.share = existingShare
-                    self.isNewShare = false
-                    DebugLogger.log("Existierender Share geladen mit \(existingShare.participants.count) Teilnehmern", level: .info)
-                } else {
-                    self.share = nil
-                    self.isNewShare = true
-                    DebugLogger.log("Neuer Share wird über Preparation-Handler erstellt", level: .info)
-                }
-                showShareSheet = true
-            } label: {
-                Image(systemName: "square.and.arrow.up")
-            }
-            .disabled(showShareSheet)
-        }
-        .sheet(isPresented: $showShareSheet) {
-          if let firstNumber = FetchedCoreNumber.first {
-            if isNewShare {
-              // Neuer Share: Preparation-Handler erstellt den Share
-              // erst wenn der Benutzer die Einladung absendet
-              CloudSharingPrepareView(
-                container: stack.ckContainer,
-                autonummer: firstNumber
-              )
-            } else if let share = share {
-              // Existierender Share: Teilnehmer verwalten
-              CloudSharingView(
-                share: share,
-                container: stack.ckContainer,
-                autonummer: firstNumber
-              )
-            }
-          }
-        }
-        .background(
-            LinearGradient(gradient: Gradient(colors: [.white, .blue, .white]), startPoint: .top, endPoint: .bottom))
-        .onAppear {
-            // Cleanup alter Duplikate
-            cleanupCoreData()
-            
-            if FetchedCoreNumber.count == 0 {
-                selectedNumber = 1
-                DebugLogger.log("Keine Einträge gefunden, setze selectedNumber = 1", level: .debug)
-            } else {
-                let lastIndex = FetchedCoreNumber.count - 1
-                DebugLogger.logCoreDataStatus(
-                    count: FetchedCoreNumber.count,
-                    lastNumber: Int(FetchedCoreNumber[lastIndex].nummer)
-                )
-                coreDataIndex = lastIndex
-                selectedNumber = Int(FetchedCoreNumber[lastIndex].nummer)
-
-                // Sicherer Zugriff auf ersten Datensatz
-                if let firstNumber = FetchedCoreNumber.first {
-                    self.share = stack.getShare(firstNumber)
-                    
-                    if stack.isShared(object: firstNumber) {
-                        DebugLogger.log("Objekt ist bereits geteilt", level: .info)
-                    } else {
-                        DebugLogger.log("Objekt ist nicht geteilt", level: .info)
                     }
                 }
+                .scrollIndicators(.hidden)
+            }
+
+            Spacer()
+
+            Button("Teilen", systemImage: "square.and.arrow.up", action: openShareSheet)
+                .labelStyle(.iconOnly)
+                .disabled(shareSheetMode != nil)
+        }
+        .sheet(item: $shareSheetMode) { mode in
+            switch mode {
+            case .existing(let share, let target):
+                CloudSharingView(
+                    share: share,
+                    container: stack.ckContainer,
+                    autonummer: target
+                )
+            case .new(let target):
+                CloudSharingPrepareView(
+                    container: stack.ckContainer,
+                    autonummer: target
+                )
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)
-            .debounce(for: .seconds(2), scheduler: DispatchQueue.global(qos: .utility))
-            .receive(on: DispatchQueue.main)) { _ in
-                // Nach Remote-Änderungen die aktuelle Nummer aktualisieren
-                guard let firstNumber = FetchedCoreNumber.first else { return }
-                
-                let newNumber = Int(firstNumber.nummer)
-                if selectedNumber != newNumber {
-                    DebugLogger.log("Nummer von anderem Gerät aktualisiert: \(selectedNumber ?? 0) → \(newNumber)", level: .info)
-                    selectedNumber = newNumber
-                }
-                
-                coreDataIndex = FetchedCoreNumber.count - 1
+        .background(
+            LinearGradient(gradient: Gradient(colors: [.white, .blue, .white]), startPoint: .top, endPoint: .bottom)
+        )
+        .alert("Neustart erforderlich", isPresented: $stack.needsManualRestart) {
+        } message: {
+            Text("Die iCloud-Daten wurden zurückgesetzt. Bitte beende die App vollständig und starte sie erneut, damit die Synchronisation neu aufgebaut werden kann.")
+        }
+        .task {
+            await observeRemoteChanges()
+        }
+        .onAppear(perform: setup)
+    }
+
+    // MARK: - Aktionen
+
+    private func select(_ number: Int) {
+        selectedNumber = number
+        saveNumber(Int16(number))
+    }
+
+    private func openShareSheet() {
+        guard let target = canonicalNumber() else {
+            DebugLogger.log("Kein Datensatz zum Teilen vorhanden", level: .warning)
+            return
+        }
+
+        if stack.isShared(object: target), let existingShare = stack.getShare(target) {
+            DebugLogger.log("Existierender Share geladen mit \(existingShare.participants.count) Teilnehmern", level: .info)
+            shareSheetMode = .existing(share: existingShare, target: target)
+        } else {
+            DebugLogger.log("Neuer Share wird über Preparation-Handler erstellt", level: .info)
+            shareSheetMode = .new(target: target)
+        }
+    }
+
+    // MARK: - Lebenszyklus
+
+    private func setup() {
+        cleanupCoreData()
+
+        guard !fetchedCoreNumbers.isEmpty else {
+            selectedNumber = 1
+            DebugLogger.log("Keine Einträge gefunden, setze selectedNumber = 1", level: .debug)
+            return
+        }
+
+        let canonical = canonicalNumber()
+        DebugLogger.logCoreDataStatus(
+            count: fetchedCoreNumbers.count,
+            lastNumber: Int(canonical?.nummer ?? 0)
+        )
+        selectedNumber = Int(canonical?.nummer ?? 1)
+
+        if let canonical {
+            let shared = stack.isShared(object: canonical)
+            DebugLogger.log(shared ? "Objekt ist bereits geteilt" : "Objekt ist nicht geteilt", level: .info)
+        }
+    }
+
+    /// Beobachtet Remote-Change-Notifications vom Persistent Store mit
+    /// einer 2-Sekunden-Debounce. Bricht laufende Debounce-Tasks ab, wenn
+    /// neue Notifications eintreffen, und reagiert mit `applyRemoteChange()`.
+    private func observeRemoteChanges() async {
+        var debounce: Task<Void, Never>?
+        for await _ in NotificationCenter.default.notifications(named: .NSPersistentStoreRemoteChange) {
+            debounce?.cancel()
+            debounce = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled else { return }
+                applyRemoteChange()
             }
+        }
+    }
+
+    private func applyRemoteChange() {
+        guard let canonical = canonicalNumber() else { return }
+        let newNumber = Int(canonical.nummer)
+        if selectedNumber != newNumber {
+            DebugLogger.log("Nummer von anderem Gerät aktualisiert: \(selectedNumber ?? 0) → \(newNumber)", level: .info)
+            selectedNumber = newNumber
+        }
+    }
+
+    // MARK: - Core Data
+
+    /// Bevorzugt den Datensatz mit aktivem CKShare als kanonische Quelle,
+    /// fällt sonst auf den Eintrag mit der höchsten Nummer zurück.
+    private func canonicalNumber() -> CoreDataAutoNummer? {
+        let entries = Array(fetchedCoreNumbers)
+        return stack.sharedObject(in: entries) ?? entries.last
     }
 
     private func saveNumber(_ number: Int16) {
         let context = managedObjectContext
         let fetchRequest: NSFetchRequest<CoreDataAutoNummer> = CoreDataAutoNummer.fetchRequest()
-        
+        fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \CoreDataAutoNummer.nummer, ascending: true)]
+
         do {
             let existingNumbers = try context.fetch(fetchRequest)
-            
-            if let existingNumber = existingNumbers.first {
-                // UPDATE: Vorhandenen Eintrag aktualisieren (behält Share-Verbindung)
-                existingNumber.nummer = number
+
+            if let target = stack.sharedObject(in: existingNumbers) ?? existingNumbers.last {
+                target.nummer = number
                 DebugLogger.log("Nummer aktualisiert: \(number)", level: .info)
             } else {
-                // INSERT: Neuen Eintrag erstellen (nur wenn noch keiner existiert)
                 let newNumber = CoreDataAutoNummer(context: context)
                 newNumber.nummer = number
                 DebugLogger.log("Neue Nummer erstellt: \(number)", level: .info)
             }
-            
+
             try context.save()
-            
-            // Cleanup alte Duplikate nach dem Speichern
-            cleanupCoreData()
+            cleanupCoreData(in: context)
         } catch {
             DebugLogger.log("Fehler beim Speichern: \(error)", level: .error)
         }
     }
-}
-// MARK: Returns CKShare participant permission
-extension ContentView {
-  private func string(for permission: CKShare.ParticipantPermission) -> String {
-    switch permission {
-    case .unknown:
-      return "Unknown"
-    case .none:
-      return "None"
-    case .readOnly:
-      return "Read-Only"
-    case .readWrite:
-      return "Read-Write"
-    @unknown default:
-      fatalError("MyDebug: A new value added to CKShare.Participant.Permission")
-    }
-  }
 
-  private func string(for role: CKShare.ParticipantRole) -> String {
-    switch role {
-    case .owner:
-      return "Owner"
-    case .privateUser:
-      return "Private User"
-    case .publicUser:
-      return "Public User"
-    case .unknown:
-      return "Unknown"
-    case .administrator:
-      return "Administrator"
-    @unknown default:
-      fatalError("MyDebug: A new value added to CKShare.Participant.Role")
+    private func cleanupCoreData() {
+        cleanupCoreData(in: managedObjectContext)
     }
-  }
 
-  private func string(for acceptanceStatus: CKShare.ParticipantAcceptanceStatus) -> String {
-    switch acceptanceStatus {
-    case .accepted:
-      return "Accepted"
-    case .removed:
-      return "Removed"
-    case .pending:
-      return "Invited"
-    case .unknown:
-      return "Unknown"
-    @unknown default:
-      fatalError("MyDebug: A new value added to CKShare.Participant.AcceptanceStatus")
-    }
-  }
-  
-  private func logShareStatus() {
-      guard FetchedCoreNumber.first != nil else { 
-        DebugLogger.log("Kein FirstRecord gefunden", level: .warning)
-        return 
-    }
-  }
+    /// Löscht alle Datensätze außer dem geteilten (falls vorhanden) bzw. dem
+    /// Eintrag mit der höchsten Nummer. So bleibt die Share-Verbindung auch
+    /// nach Sync-Duplikaten erhalten.
+    private func cleanupCoreData(in context: NSManagedObjectContext) {
+        let fetchRequest: NSFetchRequest<CoreDataAutoNummer> = CoreDataAutoNummer.fetchRequest()
+        fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \CoreDataAutoNummer.nummer, ascending: true)]
 
-  private func cleanupCoreData() {
-    let context = managedObjectContext
-    let fetchRequest: NSFetchRequest<CoreDataAutoNummer> = CoreDataAutoNummer.fetchRequest()
-    
-    do {
-        let numbers = try context.fetch(fetchRequest)
-        
-        // Wenn nur ein Eintrag existiert, nichts tun
-        guard numbers.count > 1 else {
-            DebugLogger.log("Nur ein oder kein Eintrag vorhanden - kein Cleanup nötig", level: .info)
-            return
-        }
-        
-        // Behalte den letzten (neuesten) Eintrag
-        let lastNumber = numbers.last
-        
-        DebugLogger.log("Start Cleanup - \(numbers.count) Einträge gefunden, behalte Eintrag mit Nummer: \(lastNumber?.nummer ?? -1)", level: .info)
-        
-        // Lösche alle AUSSER dem letzten Eintrag
-        for (index, number) in numbers.enumerated() {
-            if index < numbers.count - 1 {
+        do {
+            let numbers = try context.fetch(fetchRequest)
+
+            guard numbers.count > 1 else {
+                DebugLogger.log("Nur ein oder kein Eintrag vorhanden - kein Cleanup nötig", level: .info)
+                return
+            }
+
+            let keeper = stack.sharedObject(in: numbers) ?? numbers.last
+            DebugLogger.log("Start Cleanup - \(numbers.count) Einträge gefunden, behalte Eintrag mit Nummer: \(keeper?.nummer ?? -1)", level: .info)
+
+            for number in numbers where number != keeper {
                 DebugLogger.log("Lösche alten Eintrag: \(number.nummer)", level: .debug)
                 context.delete(number)
             }
+
+            try context.save()
+
+            let remainingNumbers = try context.fetch(fetchRequest)
+            DebugLogger.log("Nach Bereinigung - Anzahl Einträge: \(remainingNumbers.count)", level: .info)
+            DebugLogger.log("Aktuelle Nummer: \(remainingNumbers.first?.nummer ?? -1)", level: .info)
+        } catch {
+            DebugLogger.log("Fehler beim Cleanup: \(error)", level: .error)
         }
-        
-        try context.save()
-        
-        // Überprüfung
-        let remainingNumbers = try context.fetch(fetchRequest)
-        DebugLogger.log("Nach Bereinigung - Anzahl Einträge: \(remainingNumbers.count)", level: .info)
-        DebugLogger.log("Aktuelle Nummer: \(remainingNumbers.first?.nummer ?? -1)", level: .info)
-    } catch {
-        DebugLogger.log("Fehler beim Cleanup: \(error)", level: .error)
     }
-  }
 }
 
-//#Preview {
-//    ContentView()
-//}
+
